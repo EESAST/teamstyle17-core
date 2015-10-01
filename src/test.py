@@ -23,5 +23,25 @@ class MyRandTest(unittest.TestCase):
         self.assertEqual(randList1, randList2)
 
 
+class OctreeTest(unittest.TestCase):
+    def setUp(self):
+        import scene
+        self.scene = scene
+        self.tree = scene.Octree()
+
+    def testBasic(self):
+        sp1 = self.scene.Sphere((123456, 123456, 123456), 100000)
+        sp2 = self.scene.Sphere((234567, 234567, 234567), 100000)
+        self.tree.insert(sp1, 0)
+        self.tree.insert(sp2, 1)
+        sp3 = self.scene.Sphere((166666, 166666, 166666), 10000)
+        self.assertEqual(self.tree.insideList(sp3, True), [])
+        self.assertEqual(set(self.tree.insideList(sp3, False)), {0, 1})
+        self.tree.delete(0)
+        self.assertEqual(self.tree.insideList(sp3, False), [1])
+        self.tree.move(1,(-66666,-66666,-66666))
+        self.assertEqual(self.tree.insideList(sp3, True), [1])
+
+
 if __name__ == "__main__":
     unittest.main()
