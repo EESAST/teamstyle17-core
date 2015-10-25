@@ -35,12 +35,10 @@ class OctreeTest(unittest.TestCase):
         self.tree.insert(sp1, 0)
         self.tree.insert(sp2, 1)
         sp3 = self.scene.Sphere((166666, 166666, 166666), 10000)
-        self.assertEqual(self.tree.insideList(sp3, True), [])
-        self.assertEqual(set(self.tree.insideList(sp3, False)), {0, 1})
+        self.assertEqual(self.tree.intersect(sp3, True), [])
+        self.assertEqual(set(self.tree.intersect(sp3, False)), {0, 1})
         self.tree.delete(0)
-        self.assertEqual(self.tree.insideList(sp3, False), [1])
-        self.tree.move(1,(-66666,-66666,-66666))
-        self.assertEqual(self.tree.insideList(sp3, True), [1])
+        self.assertEqual(self.tree.intersect(sp3, False), [1])
 
 
 if __name__ == "__main__":

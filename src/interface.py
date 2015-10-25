@@ -1,13 +1,19 @@
+import json,gamemain,queue
+
 class Interface:
 
     def __init__(self):
-        pass
+        self.game=None
+        self.queue=queue.Queue
 
-    def setInstruction(self):
-        pass
+    def newGame(self):
+        self.game=gamemain.GameMain()
+
+    def setInstruction(self,instruction:str):
+        command=json.loads(instruction)
+
+    def getField(self,instruction:str):
+        command=json.loads(instruction)
 
     def nextTick(self):
-        pass
-
-    def getStatus(self):
-        pass
+        self.game.update()

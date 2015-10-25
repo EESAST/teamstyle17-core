@@ -96,6 +96,7 @@ class Octree:
             def intersectWithSphere(obj1: Sphere, obj2: Sphere) -> bool:
                 return norm(vec(obj1.center, obj2.center)) < obj1.radius + obj2.radius
 
+            # 非常蛋疼，没有信心，求计算几何高手帮忙debug
             def intersectWithBox(obj: Sphere, small: tuple, big: tuple) -> bool:
                 # 先判断正方体8个顶点是否有在球内的
                 for i in range(0, 8):
@@ -111,7 +112,7 @@ class Octree:
                     # 按照计算几何惯例，全部用空间向量运算
                     if norm(cross(vec(obj.center, endpoint1), vec(obj.center, endpoint2))) \
                             / norm(vec(endpoint1, endpoint2)) < obj.radius \
-                            and (dot(vec(endpoint1, obj.center), vec(endpoint1, endpoint2)) > 0 \
+                            and (dot(vec(endpoint1, obj.center), vec(endpoint1, endpoint2)) > 0
                                     ^ dot(vec(endpoint2, obj.center), vec(endpoint2, endpoint1)) > 0):
                         return True
                 # 若没有，则检查正方体的6个面是否有和球相交的
@@ -133,7 +134,7 @@ class Octree:
             if len(self.children) > 0:
                 for ch in self.children:
                     if intersectWithBox(obj, ch.smallCorner, ch.bigCorner):
-                        ans.extend(ch.insideList(obj, tree))
+                        ans.extend(ch.intersect(obj, tree, centerOnly))
             return ans
 
     def __init__(self):
@@ -142,21 +143,19 @@ class Octree:
         self._objs = {}
         self._paths = {}
 
+    # 添加ID为objId的球体obj
     def insert(self, obj: Sphere, objId: int):
         self._objs[objId] = obj
         self._paths[objId] = ""
         self._root.insert(objId, self)
 
+    # 删除ID为objId的物体
     def delete(self, objId: int):
         self._root.delete(objId, self._paths[objId])
         self._objs.pop(objId)
         self._paths.pop(objId)
 
-    def move(self, objId: int, delta: tuple):
-        self._root.delete(objId, self._paths[objId])
-        self._objs[objId].center = tuple(self._objs[objId].center[i] + delta[i] for i in range(0, 3))
-        self._paths[objId] = ""
-        self._root.insert(objId, self)
-
-    def insideList(self, obj: Sphere, centerOnly=True) -> list:
+    # 若centerOnly为True则返回所有球心在obj内的物体，否则返回所有与obj相交的物体
+    # 提示：既可用于判断相交，也可用于获取视野内物体
+    def intersect(self, obj: Sphere, centerOnly=False) -> list:
         return self._root.insideList(obj, self, centerOnly)

@@ -4,12 +4,12 @@
 class MyRand:
     def __init__(self, seed=1234567890):
         if seed != 0:
-            self._seed = seed & (1 << 32 - 1)
+            self._seed = seed & 0xFFFFFFFF
         else:
             self._seed = 1234567890
 
     def rand(self):
-        self._seed = (self._seed ^ (self._seed << 13)) & (1 << 32 - 1)
-        self._seed = (self._seed ^ (self._seed >> 17)) & (1 << 32 - 1)
-        self._seed = (self._seed ^ (self._seed << 5)) & (1 << 32 - 1)
+        self._seed = (self._seed ^ (self._seed << 13)) & 0xFFFFFFFF
+        self._seed = (self._seed ^ (self._seed >> 17)) & 0xFFFFFFFF
+        self._seed = (self._seed ^ (self._seed << 5)) & 0xFFFFFFFF
         return self._seed
