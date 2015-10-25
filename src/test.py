@@ -1,6 +1,11 @@
 import unittest
+import myrand
+import scene
+import time
 
-
+sp=[]
+temp=[]
+tree=scene.Octree()
 class MyRandTest(unittest.TestCase):
     def setUp(self):
         import myrand, time
@@ -21,7 +26,8 @@ class MyRandTest(unittest.TestCase):
         rand._seed = seed
         randList2 = [rand.rand() for _ in range(0, 1000)]
         self.assertEqual(randList1, randList2)
-
+def sqr(x):
+    return x*x
 
 class OctreeTest(unittest.TestCase):
     def setUp(self):
@@ -40,6 +46,27 @@ class OctreeTest(unittest.TestCase):
         self.tree.delete(0)
         self.assertEqual(self.tree.intersect(sp3, False), [1])
 
+    def testAgain(self):
+        number=30
+        self.rand=myrand.MyRand(int(time.time()))
+        sp=[]
+        for i in range(number):
+            sp.append(self.scene.Sphere((self.rand.rand(),self.rand.rand(),self.rand.rand()),self.rand.rand()))
+            tree.insert(sp[i],i)
+        for i in range(number):
+            temp=[]
+            for j in range(number):
+                if sqr(sp[i].center[0]-sp[j].center[0])+sqr(sp[i].center[1]-sp[j].center[1])+sqr(sp[i].center[2]-sp[j].center[2])<sqr(sp[i].radius):
+                    temp.append(j)
+            print(temp)
+            self.assertEqual(tree.intersect(sp[i],True),temp)
+            temp=[]
+            for j in range(number):
+                if i==j :
+                    continue
+                if sqr(sp[i].center[0]-sp[j].center[0])+sqr(sp[i].center[1]-sp[j].center[1])+sqr(sp[i].center[2]-sp[j].center[2])<sqr(sp[i].radius+sp[j].radius):
+                    temp.append(j)
+            self.assertEqual(tree.intersect(sp[i],False),temp)
 
 if __name__ == "__main__":
     unittest.main()
