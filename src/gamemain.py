@@ -1,65 +1,111 @@
-import scene,myrand
+import scene, myrand, json
+
 
 class PlayerStatus:
-
     def __init__(self):
-        #ÑªÁ¿
-        self.health=0
-        #ËÙ¶ÈÊ¸Á¿
-        self.speed=(0,0,0)
-        #ÄÜÁ¦Öµ£¬¹ºÂò¼¼ÄÜÓÃ
-        self.ability=0
-        #ÊÓÒ°°ë¾¶
-        self.vision=0
-        #¼¼ÄÜÁĞ±í£¬Ó¦ÒÔ¡°¼¼ÄÜÃû:¼¼ÄÜµÈ¼¶¡±ĞÎÊ½±£´æ
-        self.skills={}
+        # è¡€é‡
+        self.health = 0
+        # é€Ÿåº¦çŸ¢é‡
+        self.speed = (0, 0, 0)
+        # èƒ½åŠ›å€¼ï¼Œè´­ä¹°æŠ€èƒ½ç”¨
+        self.ability = 0
+        # è§†é‡åŠå¾„
+        self.vision = 0
+        # æŠ€èƒ½åˆ—è¡¨ï¼Œåº”ä»¥â€œæŠ€èƒ½å:æŠ€èƒ½ç­‰çº§â€å½¢å¼ä¿å­˜
+        self.skills = {}
+
+
+class ObjectStatus:
+    def __init__(self):
+        # ç‰©ä½“ç±»å‹ï¼Œä»¥å°å†™è‹±æ–‡å•è¯å­—ç¬¦ä¸²è¡¨ç¤º
+        self.type = "food"
 
 
 class GameMain:
+    def __init__(self, seed):
+        # å½“å‰æ—¶åˆ»ï¼Œä»¥tickä¸ºå•ä½ï¼Œæ˜¯è´Ÿæ•´æ•°
+        self._time = 0
+        # ä¿å­˜ç©å®¶ä¿¡æ¯ï¼Œåº”ä»¥â€œç©å®¶ID:PlayerStatusâ€å½¢å¼ä¿å­˜
+        self._players = {}
+        # ä¿å­˜å…¶ä»–ç‰©ä½“çš„ä¿¡æ¯ï¼Œåº”ä»¥â€œç‰©ä½“ID:ç‰©ä½“ä¿¡æ¯â€å½¢å¼ä¿å­˜ï¼Œç‰©ä½“ä¿¡æ¯çš„ç±»å‹å’Œæ ¼å¼å¯è‡ªè¡Œè§„å®š
+        self._objects = {}
+        # åœºæ™¯ç®¡ç†å™¨ï¼Œç‰©ä½“å’Œç©å®¶çš„ä½ç½®ã€å¤§å°çš„ä¿¡æ¯è®°å½•åœ¨è¿™é‡Œé¢ã€‚è¯¦æƒ…å‚è€ƒscene.pyä¸­çš„æ³¨é‡Š
+        self._scene = scene.Octree()
+        # å­˜å‚¨è¯¥å›åˆå†…æ–½æ”¾äº†ä½†æœªç»“ç®—çš„æŠ€èƒ½ï¼Œä»¥â€œç©å®¶ID:æŠ€èƒ½åâ€å½¢å¼ä¿å­˜ï¼Œæ¯å›åˆåº”æ¸…ç©ºä¸€æ¬¡
+        self._castSkills = {}
+        # éšæœºæ•°ç”Ÿæˆå™¨ï¼Œæ‰€æœ‰éšæœºäº‹ä»¶å¿…é¡»ä»è¿™é‡Œè·å–éšæœºæ•°
+        self._rand = myrand.MyRand()
 
-    def __init__(self):
-        # µ±Ç°Ê±¿Ì£¬ÒÔtickÎªµ¥Î»£¬ÊÇ¸ºÕûÊı
-        self._time=0
-        # ±£´æÍæ¼ÒĞÅÏ¢£¬Ó¦ÒÔ¡°Íæ¼ÒID:PlayerStatus¡±ĞÎÊ½±£´æ
-        self._players={}
-        # ±£´æÆäËûÎïÌåµÄĞÅÏ¢£¬Ó¦ÒÔ¡°ÎïÌåID:ÎïÌåĞÅÏ¢¡±ĞÎÊ½±£´æ£¬ÎïÌåĞÅÏ¢µÄÀàĞÍºÍ¸ñÊ½¿É×ÔĞĞ¹æ¶¨
-        self._objects={}
-        # ³¡¾°¹ÜÀíÆ÷£¬ÎïÌåºÍÍæ¼ÒµÄÎ»ÖÃ¡¢´óĞ¡µÄĞÅÏ¢¼ÇÂ¼ÔÚÕâÀïÃæ¡£ÏêÇé²Î¿¼scene.pyÖĞµÄ×¢ÊÍ
-        self._scene=scene.Octree()
-        # ´æ´¢¸Ã»ØºÏÄÚÊ©·ÅÁËµ«Î´½áËãµÄ¼¼ÄÜ£¬ÒÔ¡°Íæ¼ÒID:¼¼ÄÜÃû¡±ĞÎÊ½±£´æ£¬Ã¿»ØºÏÓ¦Çå¿ÕÒ»´Î
-        self._castSkills={}
-        # Ëæ»úÊıÉú³ÉÆ÷£¬ËùÓĞËæ»úÊÂ¼ş±ØĞë´ÓÕâÀï»ñÈ¡Ëæ»úÊı
-        self._rand=myrand.MyRand()
-
-    # Ã¿»ØºÏµ÷ÓÃÒ»´Î£¬ÒÀ´Î½øĞĞÈçÏÂ¶¯×÷£º
-    # Ïà¹Ø¸¨Öúº¯Êı¿É×ÔĞĞ±àĞ´
+    # æ¯å›åˆè°ƒç”¨ä¸€æ¬¡ï¼Œä¾æ¬¡è¿›è¡Œå¦‚ä¸‹åŠ¨ä½œï¼š
+    # ç›¸å…³è¾…åŠ©å‡½æ•°å¯è‡ªè¡Œç¼–å†™
     def update(self):
-        # 1¡¢½áËã¼¼ÄÜĞ§¹û
-        for playerId,skillName in self._castSkills:
+        # 1ã€ç»“ç®—æŠ€èƒ½æ•ˆæœ
+        for playerId, skillName in self._castSkills:
             pass
-        self._castSkills={}
-        # 2¡¢ÒÆ¶¯ËùÓĞÎïÌå£¨ËÆºõÖ»ÓĞÍæ¼ÒÄÜÒÆ¶¯£¿£©
+        self._castSkills.clear()
+        # 2ã€ç§»åŠ¨æ‰€æœ‰ç‰©ä½“ï¼ˆä¼¼ä¹åªæœ‰ç©å®¶èƒ½ç§»åŠ¨ï¼Ÿï¼‰
         for playerId in self._players.keys():
             pass
-        # 3¡¢ÅĞ¶ÏÏà½»£¬½áËã³Ô¡¢Åö×²¡¢±»»÷ÖĞµÈ¸÷ÖÖĞ§¹û
+        # 3ã€åˆ¤æ–­ç›¸äº¤ï¼Œç»“ç®—åƒã€ç¢°æ’ã€è¢«å‡»ä¸­ç­‰å„ç§æ•ˆæœ
         for playerId in self._players.keys():
             pass
-        # 4¡¢Ëæ»ú²úÉúĞÂµÄÊ³ÎïµÈ
+        # 4ã€éšæœºäº§ç”Ÿæ–°çš„é£Ÿç‰©ç­‰
         pass
-        # 5¡¢Ê±¼ä+1
-        self._time+=1
+        # 5ã€æ—¶é—´+1
+        self._time += 1
 
-    # ÈôplayerIdÎª-1Ôò·µ»ØÈ«¾ÖËùÓĞÎïÌå£¬·ñÔòÖ»·µ»Ø¸ÃIDÍæ¼ÒÊÓÒ°ÄÚÎïÌå
-    def getFieldJson(self,playerId:int):
-        pass
+    # è‹¥playerIdä¸º-1åˆ™è¿”å›å…¨å±€æ‰€æœ‰ç‰©ä½“ï¼Œå¦åˆ™åªè¿”å›è¯¥IDç©å®¶è§†é‡å†…ç‰©ä½“
+    def getFieldJson(self, aiId: int):
+        objectList = []
+        if aiId == -1:
+            for playerId in self._players.keys():
+                sphere = self._scene.getObject(playerId)
+                objectList.append({"id": playerId, "type": "player", "pos": sphere.center, "r": sphere.radius})
+            for objectId, status in self._objects:
+                sphere = self._scene.getObject(objectId)
+                objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
+        else:
+            visionSphere = scene.Sphere(self._scene.getObject(aiId), self._players[aiId].vision)
+            visibleList = self._scene.intersect(visionSphere, False)
+            for objectId in visibleList:
+                sphere = self._scene.getObject(objectId)
+                type = ""
+                if self._players.get(objectId) is not None:
+                    type = "player"
+                else:
+                    type = self._objects.get(objectId).type
+                objectList.append({"id": objectId, "type": type, "pos": sphere.center, "r": sphere.radius})
+        return json.dumps({"ai_id": aiId, "objects": objectList})
 
-    def setVelocity(self,playerId:int,newSpeed:tuple):
-        speedLimit=10000
-        newSpeedLength=sum(x**2 for x in newSpeed)
-        if newSpeedLength>speedLimit:
-            newSpeed=tuple(x*speedLimit/newSpeedLength for x in newSpeed)
-        self._players[playerId].speed=newSpeed
+    def getStatusJson(self):
+        infoList = []
+        for playerId, status in self._players:
+            info = {}
+            info["id"] = playerId
+            info["health"] = status.health
+            info["vision"] = status.vision
+            info["ability"] = status.ability
+            skillList = []
+            for name, level in status.skills:
+                skillList.append({"name": name, "level": level})
+            info["skills"] = skillList
+        return json.dumps({"players": infoList})
 
-    def castSkill(self,playerId:int,skillName:str):
-        if self._players[playerId].skills.get(skillName)!=None:
-            self._castSkills[playerId]=skillName
+    def setVelocity(self, playerId: int, newSpeed: tuple):
+        speedLimit = 10000
+        newSpeedLength = sum(x ** 2 for x in newSpeed) ** 0.5
+        if newSpeedLength > speedLimit:
+            newSpeed = tuple(x * speedLimit / newSpeedLength for x in newSpeed)
+        self._players[playerId].speed = newSpeed
+
+    # TODO æ­¤å¤„åº”æ·»åŠ å¤„ç†æŠ€èƒ½é™„åŠ å‚æ•°ï¼ˆå¦‚æ–½æ”¾ä½ç½®ã€å¯¹è±¡ç­‰ï¼‰
+    def castSkill(self, playerId: int, skillName: str):
+        if self._players[playerId].skills.get(skillName) is not None:
+            self._castSkills[playerId] = skillName
+
+    # TODO æ­¤å¤„åº”æ·»åŠ æŠ€èƒ½è´­ä¹°æ˜¯å¦æˆåŠŸçš„åˆ¤æ–­åŠæ‰£é™¤æŠ€èƒ½ç‚¹
+    def upgradeSkill(self, playerId: int, skillName: str):
+        if self._players[playerId].skills.get(skillName) is not None:
+            self._players[playerId].skills[skillName] += 1
+        else:
+            self._players[playerId].skills[skillName] = 0
