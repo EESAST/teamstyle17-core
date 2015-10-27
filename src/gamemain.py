@@ -31,7 +31,7 @@ class ObjectStatus:
 
 class BulletStatus(ObjectStatus):
     def __init__(self, damage: int, speed: tuple, owner: int):
-        self.type = "bullet"
+        ObjectStatus.__init__(self,"Bullet")
         self.damage = damage
         self.speed = speed
         self.owner = owner
@@ -39,6 +39,7 @@ class BulletStatus(ObjectStatus):
 
 class TargetStatus(ObjectStatus):
     def __init__(self):
+        ObjectStatus.__init__(self, "target")
         self.type = "target"
         self.health = 10000
 
@@ -88,6 +89,7 @@ class GameMain:
             elif skillName == 'healthUp':
                 self.healthUp(playerId, 2000)
         self._castSkills.clear()
+
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
         # TODO 关于物体触碰边界可以作更为细致的处理
         for playerId in self._players.keys():
@@ -101,9 +103,11 @@ class GameMain:
                 y = self._rand.rand() % 10
                 z = self._rand.rand() % 10
                 self.move(objId, (x, y, z))
+
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
         for playerId in self._players.keys():
             sphere = self._scene.getObject(playerId)
+            # 玩家AI可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
             insideList = self._scene.intersect(sphere, True)
             EatableList = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < sphere.radius]
             for objId in EatableList:
@@ -128,6 +132,7 @@ class GameMain:
                         self.healthUp(playerId, self._players[objId].health)
                         self._scene.delete(objId)
                         self._players.pop(objId)
+            # 玩家AI接触到的物体对其产生效果，包括受到刺球伤害及子弹伤害
             touchList = self._scene.intersect(sphere, False)
             for objId in touchList:
                 objtype = self._objects[objId].type
@@ -142,7 +147,7 @@ class GameMain:
                         self.healthDown(playerId, self._objects[objId].damage)
                     self._objects.pop(objId)
                     self._scene.delete(objId)
-        # 认为目标生物ID为0
+        # 认为目标生物ID为0，其只可能受到子弹伤害或被玩家食用
         target = self._scene.getObject(0)
         insideList = self._scene.intersect(target, True)
         EatableList = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < target.radius]
@@ -155,6 +160,7 @@ class GameMain:
                 self.healthUp(0, self._players[objId].health)
                 self._scene.delete(objId)
                 self._players.pop(objId)
+
         # 4、随机产生新的食物等,暂且每回合10个食饵,每隔10-20回合刷新一个营养源;
         # 食饵ID以“100”开头， 营养源ID以“101” + 位置号命名
         i = 0
@@ -177,6 +183,7 @@ class GameMain:
             self._nutrientflushTime = self._rand.rand() % 11 + 10
         else:
             self._nutrientflushTime -= 1
+
         # 5、时间+1
         # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1
         self._time += 1
@@ -187,6 +194,7 @@ class GameMain:
                 if self._players[playerId].skillsCD[skillName] > 0:
                     self._players[playerId].skillsCD[skillName] -= 1
 
+    # 生命下降，作用物体Id为objId, 受到伤害damage
     def healthDown(self, objId: int, damage):
         if objId == 0:
             oldhealth = self._objects[0].health
@@ -206,6 +214,7 @@ class GameMain:
             self._scene.getObject(objId).radius *= (newhealth / oldhealth) ** (1 / 3)
             self._objects[objId].health = newhealth
 
+    # 物体移动，参数为物体Id, 物体速度speed，物体半径radius（用以判断移动是否合法）,是否为子弹isbullet（若子弹移动出界，则删除）
     def move(self, Id: int, speed: tuple, radius=0, isbullet=False):
         x = self._scene.getObject(Id).center[0] + speed[0]
         y = self._scene.getObject(Id).center[1] + speed[1]
@@ -274,6 +283,7 @@ class GameMain:
         velocity = sum(x ** 2 for x in self._players[playerId].speed) ** 0.5
         return tuple(x / velocity for x in self._players[playerId].speed)
 
+    # 远程攻击，参数为使用者Id
     def longAttack(self, playerId: int):
         skillLevel = self._players[playerId].skills['longAttack']
         damage = 100 * skillLevel
@@ -290,6 +300,7 @@ class GameMain:
         self._scene.insert(bullet, bulletID)
         self._objects[bulletID] = BulletStatus(damage, speed, playerId)
 
+    # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
         skillLevel = self._players[playerId].skills['shortAttack']
         damage = 1000 + 200 * (skillLevel - 1)
@@ -307,15 +318,18 @@ class GameMain:
             self._players[playerId].shieldTime = 30
             self._players[playerId].shieldSkill = 5
 
+    # 护盾，参数为使用者Id
     def shield(self, playerId: int):
         skillLevel = self._players[playerId].skills['shield']
         self._players[playerId].shieldTime = 100 + 20 * skillLevel
         self._players[playerId].skillsCD['shield'] = 100
         self._players[playerId].shieldLevel = skillLevel
 
+    # 计算两物体pos, pos2距离
     def dis(self, pos: tuple, pos2: tuple):
         return ((pos[0] - pos2[0]) ** 2 + (pos[1] - pos2[1]) ** 2 + (pos[2] - pos2[2]) ** 2) ** 0.5
 
+    # 判断某物体是否越界，参数为物体球心及半径
     def outsideMap(self, pos: tuple, radius):
         if pos[0] - radius < 0 or pos[0] + radius > self._mapSize \
                 or pos[1] - radius < 0 or pos[1] + radius > self._mapSize \
@@ -324,6 +338,7 @@ class GameMain:
         else:
             return False
 
+    # 瞬移，参数为使用者Id， 目标位置pos2
     def teleport(self, playerId: int, pos2: tuple):
         skillLevel = self._players[playerId].skills['teleport']
         sphere = self._scene.getObject(playerId)
@@ -333,20 +348,24 @@ class GameMain:
             self._players[playerId].skillsCD['teleport'] += 100
             self._scene.getObject(playerId).center = pos2
 
+    # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
         skillLevel = self._players[playerId].skills['visionUp']
         self._players[playerId].vision = 1000 + 500 * skillLevel
 
+    # 生命回复，参数为使用者Id
     def healthUp(self,playerId: int, num: int):
         self.healthDown(playerId, -num)
 
+    # 获取球心
     def getCenter(self, Id: int):
         return self._scene.getObject(Id).center
 
+    # 获取半径
     def getRadius(self, Id: int):
         return self._scene.getObject(Id).radius
 
-    # TODO 此处应添加技能购买是否成功的判断及扣除技能点
+    # 购买技能，参数为购买者Id及购买技能名称skillName
     def upgradeSkill(self, playerId: int, skillName: str):
         if self._players[playerId].skills.get(skillName) is not None:
             price = self._skillPrice[skillName] * 2 ** self._players[playerId].skills[skillName]
