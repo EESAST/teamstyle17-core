@@ -1,3 +1,5 @@
+import copy
+
 class Sphere:
     def __init__(self, center=(0, 0, 0), r=0):
         self.center = center
@@ -146,12 +148,23 @@ class Octree:
 
     # 添加ID为objId的球体obj
     def insert(self, obj: Sphere, objId: int):
-        self._objs[objId] = obj
+        if self._objs.get(objId) is not None:
+            raise ValueError
+        self._objs[objId] = copy.copy(obj)
         self._paths[objId] = ""
         self._root.insert(objId, self)
 
     def getObject(self, objId: int):
-        return self._objs.get(objId)
+        return copy.copy(self._objs.get(objId))
+
+    # 将ID为objId的球体换成obj
+    def modify(self, obj: Sphere, objId: int):
+        if self._objs.get(objId) is None:
+            raise ValueError
+        self._root.delete(objId, self._paths[objId])
+        self._objs[objId]=copy.copy(obj)
+        self._paths[objId]=""
+        self._root.insert(objId, self)
 
     # 删除ID为objId的物体
     def delete(self, objId: int):
