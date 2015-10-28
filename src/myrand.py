@@ -8,6 +8,7 @@ class MyRand:
         else:
             self._seed = 1234567890
 
+    # 产生一个1~2^32-1的随机数（Xorshift算法并不会产生0）
     def rand(self):
         self._seed = (self._seed ^ (self._seed << 13)) & 0xFFFFFFFF
         self._seed = (self._seed ^ (self._seed >> 17)) & 0xFFFFFFFF
