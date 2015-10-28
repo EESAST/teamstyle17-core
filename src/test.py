@@ -2,6 +2,7 @@ import unittest
 import myrand
 import scene
 import time
+import gamemain
 
 sp=[]
 temp=[]
@@ -47,7 +48,7 @@ class OctreeTest(unittest.TestCase):
         self.assertEqual(self.tree.intersect(sp3, False), [1])
 
     def testAgain(self):
-        number=30
+        number=5
         self.rand=myrand.MyRand(int(time.time()))
         sp=[]
         for i in range(number):
@@ -62,11 +63,20 @@ class OctreeTest(unittest.TestCase):
             self.assertEqual(tree.intersect(sp[i],True),temp)
             temp=[]
             for j in range(number):
-                if i==j :
-                    continue
                 if sqr(sp[i].center[0]-sp[j].center[0])+sqr(sp[i].center[1]-sp[j].center[1])+sqr(sp[i].center[2]-sp[j].center[2])<sqr(sp[i].radius+sp[j].radius):
                     temp.append(j)
             self.assertEqual(tree.intersect(sp[i],False),temp)
+
+class GameMaintest(unittest.TestCase):
+    def setUp(self):
+        self.game=gamemain.GameMain()
+        self.player1=gamemain.PlayerStatus()
+        self.player2=gamemain.PlayerStatus()
+
+    def test
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
