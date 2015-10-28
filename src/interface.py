@@ -1,5 +1,5 @@
-import json, gamemain
-
+import json
+from . import gamemain
 
 class Interface:
     def __init__(self):

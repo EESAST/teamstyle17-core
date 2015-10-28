@@ -1,4 +1,5 @@
-import scene, myrand, json
+from . import scene, myrand
+import json
 
 
 class PlayerStatus:

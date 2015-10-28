@@ -1,5 +1,5 @@
 import unittest
-import myrand
+from . import myrand
 
 
 class MyRandTest(unittest.TestCase):

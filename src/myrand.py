@@ -8,9 +8,18 @@ class MyRand:
         else:
             self._seed = 1234567890
 
-    # 产生一个1~2^32-1的随机数（Xorshift算法并不会产生0）
+    # 产生一个[1,2^32-1]的随机数（Xorshift算法并不会产生0）
     def rand(self):
         self._seed = (self._seed ^ (self._seed << 13)) & 0xFFFFFFFF
         self._seed = (self._seed ^ (self._seed >> 17)) & 0xFFFFFFFF
         self._seed = (self._seed ^ (self._seed << 5)) & 0xFFFFFFFF
         return self._seed
+
+    # 产生一个[0,maxRand-1]的随机数
+    def randIn(self, maxRand:int):
+        lim = 0xFFFFFFFF // maxRand * maxRand
+        t = self.rand() - 1
+        while t >= lim:
+            t = self.rand() - 1
+        else:
+            return t % maxRand
