@@ -102,7 +102,7 @@ class GameMain:
                 x = self._rand.rand() % 10
                 y = self._rand.rand() % 10
                 z = self._rand.rand() % 10
-                self.move(objId, (x, y, z))
+                self.move(objId, (x, y, z), self._scene.getObject(objId).radius)
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
         for playerId in self._players.keys():
@@ -202,7 +202,10 @@ class GameMain:
             if newHealth <= 0:
                 self._objects.pop(0)
                 self._scene.delete(0)
-            self._scene.getObject(0).radius *= (newHealth / oldHealth) ** (1 / 3)
+                return
+            newRadius = self._scene.getObject(0).radius * (newHealth / oldHealth) ** (1 / 3)
+            newSphere = scene.Sphere(self._scene.getObject(0).center, newRadius)
+            self._scene.modify(newSphere, 0)
             self._objects[0].health = newHealth
         else:
             oldHealth = self._players[objId].health
@@ -210,8 +213,11 @@ class GameMain:
             if newHealth <= 0:
                 self._players.pop(objId)
                 self._scene.delete(objId)
-            self._scene.getObject(objId).radius *= (newHealth / oldHealth) ** (1 / 3)
-            self._objects[objId].health = newHealth
+                return
+            newRadius = self._scene.getObject(0).radius * (newHealth / oldHealth) ** (1 / 3)
+            newSphere = scene.Sphere(self._scene.getObject(0).center, newRadius)
+            self._scene.modify(newSphere, objId)
+            self._players[objId].health = newHealth
 
     # 物体移动，参数为物体Id, 物体速度speed，物体半径radius（用以判断移动是否合法）,是否为子弹isbullet（若子弹移动出界，则删除）
     def move(self, Id: int, speed: tuple, radius=0, isbullet=False):
@@ -219,13 +225,14 @@ class GameMain:
         y = self._scene.getObject(Id).center[1] + speed[1]
         z = self._scene.getObject(Id).center[2] + speed[2]
         pos = (x, y, z)
-        if self.outsideMap(pos, radius) is True:
-            if isbullet is True:
+        if self.outsideMap(pos, radius):
+            if isbullet:
                 self._objects.pop(Id)
                 self._scene.delete(Id)
             return
         else:
-            self._scene.getObject(Id).center = pos
+            newSphere = scene.Sphere(pos, radius)
+            self._scene.modify(newSphere, Id)
 
     # 若playerId为-1则返回全局所有物体，否则只返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
