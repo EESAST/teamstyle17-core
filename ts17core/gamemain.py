@@ -1,4 +1,4 @@
-from . import scene, myrand
+from ts17core import scene, myrand
 import json
 
 

@@ -1,5 +1,5 @@
 import unittest, time
-from . import myrand, scene, gamemain
+from ts17core import myrand, scene, gamemain
 
 
 class MyRandTest(unittest.TestCase):
@@ -177,7 +177,3 @@ class GameMaintest(unittest.TestCase):
         self.assertTrue(self.player1.health<now+1100)
         self.assertTrue(self.player1.health>=now+now1)
         self.assertTrue(0 not in self._scene.intersect(self._scene.getObject(1)))
-
-
-if __name__ == "__main__":
-    unittest.main()

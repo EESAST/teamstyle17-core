@@ -1,5 +1,6 @@
 import json
-from . import gamemain
+from ts17core import gamemain
+
 
 class Interface:
     def __init__(self):

@@ -57,4 +57,4 @@ docs/_build/
 target/
 
 # PyCharm project settings
-src/.idea/
+.idea/
