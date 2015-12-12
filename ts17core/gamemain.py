@@ -44,6 +44,15 @@ class TargetStatus():
         self.health = 10000
 
 
+class CastSkillInfo():
+    def __init__(self,name):
+        self.name=name
+
+class CastTeleportInfo():
+    def __init__(self,dst):
+        self.name="teleport"
+        self.dst=dst
+
 class GameMain:
     def __init__(self, seed):
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
@@ -74,7 +83,8 @@ class GameMain:
     def update(self):
         # 1、结算技能效果
         # TODO 远程攻击和瞬间移动的满级效果没有写
-        for playerId, skillName in self._castSkills:
+        for playerId, skillInfo in self._castSkills:
+            skillName=skillInfo.name
             if skillName == 'longAttack':
                 self.longAttack(playerId)
             elif skillName == 'shortAttack':
@@ -82,8 +92,7 @@ class GameMain:
             elif skillName == 'shield':
                 self.shield(playerId)
             elif skillName == 'teleport':
-                # 需要传入一个目标地点
-                self.teleport(playerId, pos2)
+                self.teleport(playerId, skillInfo.dst)
             elif skillName == 'visionUp':
                 self.visionUp(playerId)
             elif skillName == 'healthUp':
@@ -109,8 +118,14 @@ class GameMain:
             sphere = self._scene.getObject(playerId)
             # 玩家AI可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
             insideList = self._scene.intersect(sphere, True)
-            eatablelist = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < sphere.radius]
-            for objId in eatablelist:
+            eatableList = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < sphere.radius]
+            for objId in eatableList:
+                if self._players.get(objId) is not None:
+                    if self._players[objId].shieldTime == 0 or self._players[objId].shieldSkill < 4:
+                        self.healthUp(playerId, self._players[objId].health)
+                        self._scene.delete(objId)
+                        self._players.pop(objId)
+                    continue
                 objType = self._objects[objId].type
                 if objType == "food":
                     self.healthUp(playerId, 10)
@@ -127,14 +142,11 @@ class GameMain:
                     self._objects.pop(objId)
                     self._scene.delete(objId)
                     self.gameEnd()
-                elif self._players.get(objId) is not None:
-                    if self._players[objId].shieldTime == 0 or self._players[objId].shieldSkill < 4:
-                        self.healthUp(playerId, self._players[objId].health)
-                        self._scene.delete(objId)
-                        self._players.pop(objId)
             # 玩家AI接触到的物体对其产生效果，包括受到刺球伤害及子弹伤害
             touchList = self._scene.intersect(sphere, False)
             for objId in touchList:
+                if self._players.get(objId) is not None:
+                    continue
                 objType = self._objects[objId].type
                 if objType == "spike":
                     if self._players[playerId].shieldTime == 0 or self._players[playerId].shieldSkill < 5:
@@ -150,8 +162,8 @@ class GameMain:
         # 认为目标生物ID为0，其只可能受到子弹伤害或被玩家食用
         target = self._scene.getObject(0)
         insideList = self._scene.intersect(target, True)
-        eatablelist = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < target.radius]
-        for objId in eatablelist:
+        eatableList = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < target.radius]
+        for objId in eatableList:
             if self._objects[objId].type == "bullet":
                 self.healthDown(0, self._objects[objId].damage)
                 self._scene.delete(objId)
@@ -275,10 +287,13 @@ class GameMain:
         self._players[playerId].speed = newSpeed
 
     # TODO 此处应添加处理技能附加参数（如施放位置、对象等）
-    def castSkill(self, playerId: int, skillName: str, **kwargs):
+    def castSkill(self, playerId: int, skillName: str, **kw):
         if self._players[playerId].skills.get(skillName) is not None:
             if self._players[playerId].skillsCD[skillName] == 0:
-                self._castSkills[playerId] = skillName
+                if skillName=='teleport':
+                    self._castSkills[playerId] = CastTeleportInfo(kw['dst'])
+                else:
+                    self._castSkills[playerId] = CastSkillInfo(skillName)
 
     # 获取单位速度矢量
     def getUnitSpeed(self, playerId: int):

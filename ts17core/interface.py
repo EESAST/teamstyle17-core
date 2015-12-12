@@ -13,7 +13,10 @@ class Interface:
         if command["action"] == "move":
             self.game.setVelocity(command["ai_id"], (command["x"], command["y"], command["z"]))
         if command["action"] == "use_skill":
-            self.game.castSkill(command["ai_id"], command["skill_type"])
+            if command["skill_type"]=="teleport":
+                self.game.castSkill(command["ai_id"], "teleport", dst=tuple(command["dst"]))
+            else:
+                self.game.castSkill(command["ai_id"], command["skill_type"])
         if command["action"] == "upgrade_skill":
             self.game.upgradeSkill(command["ai_id"], command["skill_type"])
 
