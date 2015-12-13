@@ -1,7 +1,7 @@
 import copy
 
 class Sphere:
-    def __init__(self, center=(0, 0, 0), r=0):
+    def __init__(self, center:tuple=(0, 0, 0), r:int=0):
         self.center = center
         self.radius = r
 

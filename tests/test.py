@@ -161,7 +161,7 @@ class GameMaintest(unittest.TestCase):
         self.player0.ability = 100
         for x in range(4):
             self.game.upgradeSkill(0, "shield")
-        self.game._castSkills[0] = "shield"
+        self.game.castSkill(0, "shield")
         self.player0.speed = (47, 47, 47)
         now = self.player1.health
         self.game.update()
