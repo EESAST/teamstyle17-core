@@ -69,11 +69,11 @@ class GameMaintest(unittest.TestCase):
     def setUp(self):
         self.game = gamemain.GameMain(0)
         self.player1 = gamemain.PlayerStatus()
-        self.player0 = gamemain.PlayerStatus()
-        self.player0.health = 1000
+        self.player2 = gamemain.PlayerStatus()
+        self.player2.health = 1000
         self.player1.health = 1331
         self.game._players = {2: self.player2, 1: self.player1}
-        self.game._scene.insert((scene.Sphere((10000, 10000, 10000), 10)), 0)
+        self.game._scene.insert((scene.Sphere((10000, 10000, 10000), 10)), 2)
         self.game._scene.insert((scene.Sphere((10100, 10100, 10100), 11)), 1)
 
     def testMove(self):
@@ -159,10 +159,10 @@ class GameMaintest(unittest.TestCase):
 
     def testshield_level4(self):
         self.player2.ability = 100
-        for x in range(4):
+        for x in range(3):
             self.game.upgradeSkill(2, "shield")
         self.game.castSkill(2, "shield")
-        self.player0.speed = (47, 47, 47)
+        self.player2.speed = (47, 47, 47)
         now = self.player1.health
         self.game.update()
         self.assertTrue(self.game._castSkills == {}, "castSkills is not empty")
@@ -186,3 +186,21 @@ class GameMaintest(unittest.TestCase):
         self.assertTrue(self.player1.health < now + 1100)
         self.assertTrue(self.player1.health >= now + now1)
         self.assertTrue(2 not in self.game._scene.intersect(self.game._scene.getObject(1)))
+
+    def tsetshortattack(self):
+        self.player2.speed=(50,50,50);
+        self.update();
+        self.player2.speed=(0,0,0);
+        self.game.upgradeSkill(2, "shortAttack")
+        self.game.castSkill(2, "shortAttack")
+        self.update()
+        self.assertTrue(self.player1.health<331+100,"shortAttack is wrong")
+        self.assertTrue(self.player2.health<1000,"shortAtack without cost")
+
+    def testteleport(self):
+        self.game.upgradeSkill(2,"teleport")
+        self.game.castSkill(2,"teleport",((10010, 10010, 10010)))
+        self.assertTrue(self.game.playerpos(2)==(10000,10000,10000),"teleport to fast")
+        self.game.update()
+        self.assertTrue(self.game.playerpos(2)==(10010,10010,10010),"teleport wrong")
+

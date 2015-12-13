@@ -22,6 +22,7 @@ class PlayerStatus:
         self.shieldLevel = 0
 
 
+
 # 物体包括：食物（food）、营养源（nutrient）、刺球（spike）、目标生物（target）、远程子弹（bullet）
 class ObjectStatus:
     def __init__(self, objtype="food"):
@@ -77,6 +78,10 @@ class GameMain:
         self._nutrientFlushTime = 0
         # 营养源刷新位置
         self._nutrientFlushPos = [tuple(self._mapSize//2 for _ in range(3))]
+
+    #player位置获取
+    def playerpos(self,ID):
+        return self._scene.getObject(ID)
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
@@ -378,6 +383,8 @@ class GameMain:
     # 获取球心
     def getCenter(self, Id: int):
         return self._scene.getObject(Id).center
+
+
 
     # 获取半径
     def getRadius(self, Id: int):
