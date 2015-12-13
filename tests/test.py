@@ -193,6 +193,7 @@ class GameMaintest(unittest.TestCase):
         self.player2.speed=(0,0,0);
         self.game.upgradeSkill(2, "shortAttack")
         self.game.castSkill(2, "shortAttack")
+        self.assertTrue(self.player2.health>=1000,"shortAttack to fast")
         self.update()
         self.assertTrue(self.player1.health<331+100,"shortAttack is wrong")
         self.assertTrue(self.player2.health<1000,"shortAtack without cost")
@@ -203,4 +204,14 @@ class GameMaintest(unittest.TestCase):
         self.assertTrue(self.game.playerpos(2)==(10000,10000,10000),"teleport to fast")
         self.game.update()
         self.assertTrue(self.game.playerpos(2)==(10010,10010,10010),"teleport wrong")
+
+    def testlongAttack(self):
+        self.game.upgradeSkill(2,"longAttack")
+        self.game.castSkill(2,"longAttack",((1, 1, 1)))
+        self.assertTrue(self.player2.health==1000,"longAttack to fast")
+        self.game.update()
+        self.assertTrue(self.player1.health>1331,"longAttack speed is wrong")
+        temp=self.player1.health
+        self.game.update()
+        self.assertTrue(self.player1.health<temp-50,"longAttack is wrong")
 
