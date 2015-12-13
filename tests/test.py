@@ -161,8 +161,8 @@ class GameMaintest(unittest.TestCase):
         self.player2.ability = 100
         for x in range(4):
             self.game.upgradeSkill(2, "shield")
-        self.game._castSkills[2] = "shield"
-        self.player2.speed = (47, 47, 47)
+        self.game.castSkill(2, "shield")
+        self.player0.speed = (47, 47, 47)
         now = self.player1.health
         self.game.update()
         self.assertTrue(self.game._castSkills == {}, "castSkills is not empty")

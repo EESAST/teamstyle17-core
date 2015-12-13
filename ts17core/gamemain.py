@@ -71,19 +71,20 @@ class GameMain:
         self._rand = myrand.MyRand(seed)
         # 技能基础价格
         self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'teleport': 2, 'visionUp': 2, 'healthUp': 1}
-        # 地图中食物数量
-        self._foodNum = 0
+        # 食物编号
+        self._foodCount = 0
         # 营养源刷新剩余时间
         self._nutrientFlushTime = 0
         # 营养源刷新位置
-        self._nutrientFlushPos = ()
+        self._nutrientFlushPos = [tuple(self._mapSize//2 for _ in range(3))]
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
     def update(self):
         # 1、结算技能效果
         # TODO 远程攻击和瞬间移动的满级效果没有写
-        for playerId, skillInfo in self._castSkills:
+        for playerId in self._castSkills:
+            skillInfo=self._castSkills[playerId]
             skillName=skillInfo.name
             if skillName == 'longAttack':
                 self.longAttack(playerId)
@@ -108,9 +109,9 @@ class GameMain:
                 self.move(objId, self._objects[objId].speed, 0, True)
             # 目标生物行动缓慢，每回合随机游走，每个方向的速度为0~9
             elif self._objects[objId].type == "target":
-                x = self._rand.rand() % 10
-                y = self._rand.rand() % 10
-                z = self._rand.rand() % 10
+                x = self._rand.randIn(10)
+                y = self._rand.randIn(10)
+                z = self._rand.randIn(10)
                 self.move(objId, (x, y, z), self._scene.getObject(objId).radius)
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
@@ -131,7 +132,6 @@ class GameMain:
                     self.healthUp(playerId, 10)
                     self._scene.delete(objId)
                     self._objects.pop(objId)
-                    self._foodNum -= 1
                 elif objType == "nutrient":
                     self.healthUp(playerId, self._rand.rand() % 301 + 200)
                     self._players[playerId].ability += self._rand.rand() % 5 + 1
@@ -174,24 +174,25 @@ class GameMain:
                 self._players.pop(objId)
 
         # 4、随机产生新的食物等,暂且每回合10个食饵,每隔10-20回合刷新一个营养源;
-        # 食饵ID以“100”开头， 营养源ID以“101” + 位置号命名
+        # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
         foodPerTick = 10
         for _ in range(foodPerTick):
-            center = (self._rand.rand(), self._rand.rand(), self._rand.rand())
+            center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             food = scene.Sphere(center)
-            foodId = int("100" + str(self._foodNum))
+            foodId = 1000000+self._foodCount
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
+            self._foodCount+=1
         if self._nutrientFlushTime == 0:
-            pos = self._rand.rand() % len(self._nutrientFlushPos)
-            nutrientId = int("101" + str(pos))
+            pos = self._rand.randIn(len(self._nutrientFlushPos))
+            nutrientId = int(2000000+pos)
             while self._objects.get(nutrientId) is not None:
-                pos = self._rand.rand() % len(self._nutrientFlushPos)
-                nutrientId = int("101" + str(pos))
+                pos = self._rand.randIn(self._nutrientFlushPos)
+                nutrientId = int(2000000+pos)
             nutrient = scene.Sphere(self._nutrientFlushPos[pos])
             self._objects[nutrientId] = ObjectStatus("nutrient")
             self._scene.insert(nutrient, nutrientId)
-            self._nutrientFlushTime = self._rand.rand() % 11 + 10
+            self._nutrientFlushTime = self._rand.randIn(11) + 10
         else:
             self._nutrientFlushTime -= 1
 
