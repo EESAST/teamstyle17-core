@@ -20,6 +20,8 @@ class PlayerStatus:
         self.shieldTime = 0
         # 护盾等级（考虑到技能特殊效果触发的护盾等级与技能等级不符而设置）
         self.shieldLevel = 0
+        # 最近一次使用瞬间移动后经过的时间（为瞬移满级效果设定）
+        self.teleportTime = 0
 
 
 
@@ -82,6 +84,14 @@ class GameMain:
     #player位置获取
     def playerpos(self,ID):
         return self._scene.getObject(ID)
+
+    #添加新玩家
+    def addNewPlayer(self, playerID: int, pos: tuple, radius: int):
+        player = scene.Sphere(pos, radius)
+        self._scene.insert(player, playerID)
+        newStatus = PlayerStatus()
+        newStatus.health = radius ** 3
+        self._players[playerID] = newStatus
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
@@ -202,11 +212,12 @@ class GameMain:
             self._nutrientFlushTime -= 1
 
         # 5、时间+1
-        # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1
+        # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
         self._time += 1
         for playerId in self._players.keys():
             if self._players[playerId].shieldTime > 0:
                 self._players[playerId].shieldTime -= 1
+            self._players[playerId].teleportTime += 1
             for skillName in self._players[playerId].skillsCD.keys():
                 if self._players[playerId].skillsCD[skillName] > 0:
                     self._players[playerId].skillsCD[skillName] -= 1
@@ -247,6 +258,17 @@ class GameMain:
             if isbullet:
                 self._objects.pop(Id)
                 self._scene.delete(Id)
+            else:
+                vx = self._players[Id].speed[0]
+                vy = self._players[Id].speed[1]
+                vz = self._players[Id].speed[2]
+                if x + radius > self._mapSize or x - radius < 0:
+                    vx = 0
+                if y + radius > self._mapSize or y - radius < 0:
+                    vy = 0
+                if z + radius > self._mapSize or z - radius < 0:
+                    vz = 0
+                self._players[Id].speed = (vx, vy, vz)
             return
         else:
             newSphere = scene.Sphere(pos, radius)
@@ -369,7 +391,8 @@ class GameMain:
             return
         else:
             self._players[playerId].skillsCD['teleport'] += 100
-            self._scene.getObject(playerId).center = pos2
+            newSphere = scene.Sphere(pos2,sphere.radius)
+            self._scene.modify(newSphere,playerId)
 
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
