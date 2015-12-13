@@ -72,117 +72,117 @@ class GameMaintest(unittest.TestCase):
         self.player0 = gamemain.PlayerStatus()
         self.player0.health = 1000
         self.player1.health = 1331
-        self.game._players = {0: self.player0, 1: self.player1}
+        self.game._players = {2: self.player2, 1: self.player1}
         self.game._scene.insert((scene.Sphere((10000, 10000, 10000), 10)), 0)
         self.game._scene.insert((scene.Sphere((10100, 10100, 10100), 11)), 1)
 
     def testMove(self):
-        self.player0.speed = (1, 0, 0)
+        self.player2.speed = (1, 0, 0)
         self.game.update()
-        self.assertEqual(self.game._scene.getObject(0).center, (100100, 10000, 10000))
+        self.assertEqual(self.game._scene.getObject(2).center, (100100, 10000, 10000))
 
     def testSkillShop(self):
-        self.game.upgradeSkill(0, "longAttack")
-        self.assertEqual(self.player0.ability, 0, "money is not enough")
-        self.assertEqual(self.player0.skills, {})
-        self.player0.ability = 1
-        self.game.upgradeSkill(0, "shield")
-        self.assertEqual(self.player0.ability, 1, "money is not enough")
-        self.assertEqual(self.player0.skills, {})
-        self.player0.ability = 10000
+        self.game.upgradeSkill(2, "longAttack")
+        self.assertEqual(self.player2.ability,2, "money is not enough")
+        self.assertEqual(self.player2.skills, {})
+        self.player2.ability = 1
+        self.game.upgradeSkill(2, "shield")
+        self.assertEqual(self.player2.ability,2, "money is not enough")
+        self.assertEqual(self.player2.skills, {})
+        self.player2.ability = 10000
         for x in range(5):
-            self.game.upgradeSkill(0, "longAttack")
-            self.assertEqual(self.player0.ability, 10000 - 2 ** (x + 1) + 1, "ability is wrong")
-            self.assertEqual(self.player0.skills, {"longAttack": x + 1})
+            self.game.upgradeSkill(2, "longAttack")
+            self.assertEqual(self.player2.ability, 10000 - 2 ** (x + 1) + 1, "ability is wrong")
+            self.assertEqual(self.player2.skills, {"longAttack": x + 1})
         for x in range(5):
-            self.game.upgradeSkill(0, "shortAttack")
-            self.assertEqual(self.player0.ability, 9969 - 2 ** (x + 1), "ability is wrong")
-            self.assertEqual(self.player0.skills, {"shortAttack": x + 1, "longAttack": 5})
+            self.game.upgradeSkill(2, "shortAttack")
+            self.assertEqual(self.player2.ability, 9969 - 2 ** (x + 1), "ability is wrong")
+            self.assertEqual(self.player2.skills, {"shortAttack": x + 1, "longAttack": 5})
         for x in range(5):
-            self.game.upgradeSkill(0, "shield")
-            self.assertEqual(self.player0.ability, 9937 - 2 ** (x + 2) - 4, "ability is wrong")
-            self.assertEqual(self.player0.skills, {"shortAttack": 5, "longAttack": 5, "shield": x + 1})
+            self.game.upgradeSkill(2, "shield")
+            self.assertEqual(self.player2.ability, 9937 - 2 ** (x + 2) - 4, "ability is wrong")
+            self.assertEqual(self.player2.skills, {"shortAttack": 5, "longAttack": 5, "shield": x + 1})
         for x in range(5):
-            self.game.upgradeSkill(0, "teleport")
-            self.assertEqual(self.player0.ability, 9869 - 2 ** (x + 2) - 12, "ability is wrong")
-            self.assertEqual(self.player0.skills, {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": x + 1})
+            self.game.upgradeSkill(2, "teleport")
+            self.assertEqual(self.player2.ability, 9869 - 2 ** (x + 2) - 12, "ability is wrong")
+            self.assertEqual(self.player2.skills, {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": x + 1})
         for x in range(5):
-            self.game.upgradeSkill(0, "visionUp")
-            self.assertEqual(self.player0.ability, 9793 - 2 ** (x + 2) - 28, "ability is wrong")
-            self.assertEqual(self.player0.skills,
+            self.game.upgradeSkill(2, "visionUp")
+            self.assertEqual(self.player2.ability, 9793 - 2 ** (x + 2) - 28, "ability is wrong")
+            self.assertEqual(self.player2.skills,
                              {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": x + 1})
-            self.assertEqual(self.player0.vision, 1000 + 500 * x)
+            self.assertEqual(self.player2.vision, 1000 + 500 * x)
         for x in range(5):
-            self.game.upgradeSkill(0, "healthUp")
-            self.assertEqual(self.player0.ability, 9701 - 2 ** (x + 1) - 30, "ability is wrong")
-            self.assertEqual(self.player0.skills,
+            self.game.upgradeSkill(2, "healthUp")
+            self.assertEqual(self.player2.ability, 9701 - 2 ** (x + 1) - 30, "ability is wrong")
+            self.assertEqual(self.player2.skills,
                              {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": 5,
                               "healthUp": x + 1})
-            self.assertEqual(self.player0.health, 3500 + 2000 * x)
-        self.game.upgradeSkill(0, "longAttack")
-        self.assertEqual(self.player0.ability, 9639, "skill can't be improved")
-        self.assertEqual(self.player0.skills,
+            self.assertEqual(self.player2.health, 3500 + 2000 * x)
+        self.game.upgradeSkill(2, "longAttack")
+        self.assertEqual(self.player2.ability, 9639, "skill can't be improved")
+        self.assertEqual(self.player2.skills,
                          {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": 5, "healthUp": 5})
-        self.game.upgradeSkill(0, "shortAttack")
-        self.assertEqual(self.player0.ability, 9639, "skill can't be improved")
-        self.assertEqual(self.player0.skills,
+        self.game.upgradeSkill(2, "shortAttack")
+        self.assertEqual(self.player2.ability, 9639, "skill can't be improved")
+        self.assertEqual(self.player2.skills,
                          {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": 5, "healthUp": 5})
-        self.game.upgradeSkill(0, "shield")
-        self.assertEqual(self.player0.ability, 9639, "skill can't be improved")
-        self.assertEqual(self.player0.skills,
+        self.game.upgradeSkill(2, "shield")
+        self.assertEqual(self.player2.ability, 9639, "skill can't be improved")
+        self.assertEqual(self.player2.skills,
                          {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": 5, "healthUp": 5})
-        self.game.upgradeSkill(0, "teleport")
-        self.assertEqual(self.player0.ability, 9639, "skill can't be improved")
-        self.assertEqual(self.player0.skills,
+        self.game.upgradeSkill(2, "teleport")
+        self.assertEqual(self.player2.ability, 9639, "skill can't be improved")
+        self.assertEqual(self.player2.skills,
                          {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": 5, "healthUp": 5})
-        self.game.upgradeSkill(0, "visionUp")
-        self.assertEqual(self.player0.ability, 9639, "skill can't be improved")
-        self.assertEqual(self.player0.skills,
+        self.game.upgradeSkill(2, "visionUp")
+        self.assertEqual(self.player2.ability, 9639, "skill can't be improved")
+        self.assertEqual(self.player2.skills,
                          {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": 5, "healthUp": 5})
-        self.assertEqual(self.player0.vision, 3000)
-        self.game.upgradeSkill(0, "healthUp")
-        self.assertEqual(self.player0.ability, 9639, "skill can't be improved")
-        self.assertEqual(self.player0.skills,
+        self.assertEqual(self.player2.vision, 3000)
+        self.game.upgradeSkill(2, "healthUp")
+        self.assertEqual(self.player2.ability, 9639, "skill can't be improved")
+        self.assertEqual(self.player2.skills,
                          {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": 5, "healthUp": 5})
-        self.assertEqual(self.player0.health, 11500)
+        self.assertEqual(self.player2.health, 11500)
 
     def testEat(self):
         now = self.player1.health
-        self.player0.speed = (47, 47, 47)
+        self.player2.speed = (47, 47, 47)
         self.game.update()
         self.assertTrue(self.player1.health < now + 100)
         now = self.player1.health
         self.game.update()
         self.assertTrue(self.player1.health < now + 1100)
         self.assertTrue(self.player1.health >= now + 1000)
-        self.assertNotIn(0, self.game._scene.intersect(self.game._scene.getObject(1)))
+        self.assertNotIn(2, self.game._scene.intersect(self.game._scene.getObject(1)))
 
     def testshield_level4(self):
-        self.player0.ability = 100
+        self.player2.ability = 100
         for x in range(4):
-            self.game.upgradeSkill(0, "shield")
-        self.game._castSkills[0] = "shield"
-        self.player0.speed = (47, 47, 47)
+            self.game.upgradeSkill(2, "shield")
+        self.game._castSkills[2] = "shield"
+        self.player2.speed = (47, 47, 47)
         now = self.player1.health
         self.game.update()
         self.assertTrue(self.game._castSkills == {}, "castSkills is not empty")
         self.assertTrue(self.player1.health < now + 100)
-        self.assertEqual(self.player0.shieldTime, 160)
+        self.assertEqual(self.player2.shieldTime, 160)
         now = self.player1.health
         self.game.update()
         self.assertTrue(self.player1.health < now + 100)
-        self.assertTrue(0 in self.game._scene.intersect(self.game._scene.getObject(1)))
-        self.assertEqual(self.player0.shieldTime, 159)
-        self.player0.speed = (0, 0, 0)
+        self.assertTrue(2 in self.game._scene.intersect(self.game._scene.getObject(1)))
+        self.assertEqual(self.player2.shieldTime, 159)
+        self.player2.speed = (0, 0, 0)
         now = self.player1.health
         for x in range(158):
             self.game.update()
             self.assertTrue(self.player1.health < now + 100)
-            self.assertTrue(0 in self.game._scene.intersect(self.game._scene.getObject(1)))
-            self.assertEqual(self.player0.shieldTime, 158 - x)
+            self.assertTrue(2 in self.game._scene.intersect(self.game._scene.getObject(1)))
+            self.assertEqual(self.player2.shieldTime, 158 - x)
             self.now = self.player1.health
-        now1 = self.player0.health
+        now1 = self.player2.health
         self.game.update()
         self.assertTrue(self.player1.health < now + 1100)
         self.assertTrue(self.player1.health >= now + now1)
-        self.assertTrue(0 not in self.game._scene.intersect(self.game._scene.getObject(1)))
+        self.assertTrue(2 not in self.game._scene.intersect(self.game._scene.getObject(1)))
