@@ -1,5 +1,6 @@
 from ts17core import scene, myrand
 import json
+import math
 
 
 class PlayerStatus:
@@ -56,6 +57,12 @@ class CastTeleportInfo():
         self.name="teleport"
         self.dst=dst
 
+class CastLongAttackInfo():
+    def __init__(self,speed):
+        self.name="longAttack"
+        tot=math.sqrt(math.sqr(speed[0])+math.sqr(speed[1])+math.sqr(speed[2]))
+        self.speed=tuple(x/tot for x in speed)
+
 class GameMain:
     def __init__(self, seed):
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
@@ -83,7 +90,7 @@ class GameMain:
 
     #player位置获取
     def playerpos(self,ID):
-        return self._scene.getObject(ID)
+        return self._scene.getObject(ID).center
 
     #添加新玩家
     def addNewPlayer(self, playerID: int, pos: tuple, radius: int):
@@ -102,17 +109,14 @@ class GameMain:
             skillInfo=self._castSkills[playerId]
             skillName=skillInfo.name
             if skillName == 'longAttack':
-                self.longAttack(playerId)
+                self.longAttack(playerId,skillInfo.speed)
             elif skillName == 'shortAttack':
                 self.shortAttack(playerId)
             elif skillName == 'shield':
                 self.shield(playerId)
             elif skillName == 'teleport':
                 self.teleport(playerId, skillInfo.dst)
-            elif skillName == 'visionUp':
-                self.visionUp(playerId)
-            elif skillName == 'healthUp':
-                self.healthUp(playerId, 2000)
+
         self._castSkills.clear()
 
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
@@ -320,6 +324,8 @@ class GameMain:
             if self._players[playerId].skillsCD[skillName] == 0:
                 if skillName=='teleport':
                     self._castSkills[playerId] = CastTeleportInfo(kw['dst'])
+                elif skillName=='longAttack':
+                    self._castSkills[playerId]=CastLongAttackInfo(kw['speed'])
                 else:
                     self._castSkills[playerId] = CastSkillInfo(skillName)
 
@@ -329,11 +335,11 @@ class GameMain:
         return tuple(x / velocity for x in self._players[playerId].speed)
 
     # 远程攻击，参数为使用者Id
-    def longAttack(self, playerId: int):
+    def longAttack(self, playerId: int,speed2:tuple):
         skillLevel = self._players[playerId].skills['longAttack']
         damage = 100 * skillLevel
         # 发射速度是否这样处理？
-        speed = tuple(x * (100 + 50 * (skillLevel - 1)) for x in self.getUnitSpeed(playerId))
+        speed = tuple(x * (100 + 50 * (skillLevel - 1)) for x in speed2)
         self.healthDown(playerId, 10)
         self._players[playerId].skillsCD['longAttack'] = 10
         bullet = scene.Sphere(self.getCenter(playerId))
@@ -344,6 +350,9 @@ class GameMain:
         bulletID = int(str(playerId) + str(i))
         self._scene.insert(bullet, bulletID)
         self._objects[bulletID] = BulletStatus(damage, speed, playerId)
+
+
+
 
     # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
@@ -420,12 +429,20 @@ class GameMain:
             if self._players[playerId].ability >= price and self._players[playerId].skills[skillName] < 5:
                 self._players[playerId].skills[skillName] += 1
                 self._players[playerId].ability -= price
+                if (skillName=="visionUp"):
+                    self.visionUp(playerId)
+                if (skillName=="healthUp"):
+                    self.healthUp(playerId)
         elif self._players[playerId].skills.get(skillName) is None:
             price = self._skillPrice[skillName] * 2 ** len(self._players[playerId].skills)
             if self._players[playerId].ability >= price:
                 self._players[playerId].skills[skillName] = 1
                 self._players[playerId].ability -= price
                 self._players[playerId].skillsCD[skillName] = 0
+                if (skillName=="visionUp"):
+                    self.visionUp(playerId)
+                if (skillName=="healthUp"):
+                    self.healthUp(playerId,2000)
 
     def gameEnd(self):
         pass

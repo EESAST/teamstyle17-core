@@ -83,11 +83,11 @@ class GameMaintest(unittest.TestCase):
 
     def testSkillShop(self):
         self.game.upgradeSkill(2, "longAttack")
-        self.assertEqual(self.player2.ability,2, "money is not enough")
+        self.assertEqual(self.player2.ability,0, "money is not enough")
         self.assertEqual(self.player2.skills, {})
         self.player2.ability = 1
         self.game.upgradeSkill(2, "shield")
-        self.assertEqual(self.player2.ability,2, "money is not enough")
+        self.assertEqual(self.player2.ability,1, "money is not enough")
         self.assertEqual(self.player2.skills, {})
         self.player2.ability = 10000
         for x in range(5):
@@ -111,7 +111,7 @@ class GameMaintest(unittest.TestCase):
             self.assertEqual(self.player2.ability, 9793 - 2 ** (x + 2) - 28, "ability is wrong")
             self.assertEqual(self.player2.skills,
                              {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": x + 1})
-            self.assertEqual(self.player2.vision, 1000 + 500 * x)
+            self.assertEqual(self.player2.vision, 1000 + 500 * (x+1))
         for x in range(5):
             self.game.upgradeSkill(2, "healthUp")
             self.assertEqual(self.player2.ability, 9701 - 2 ** (x + 1) - 30, "ability is wrong")
@@ -200,14 +200,15 @@ class GameMaintest(unittest.TestCase):
 
     def testteleport(self):
         self.game.upgradeSkill(2,"teleport")
-        self.game.castSkill(2,"teleport",((10010, 10010, 10010)))
-        self.assertTrue(self.game.playerpos(2)==(10000,10000,10000),"teleport to fast")
+        self.temp=self.game.playerpos(2)
+        self.game.castSkill(2,"teleport",dst=(10010, 10010, 10010))
+        self.assertTrue(self.game.playerpos(2)==self.temp,"move too fast")
         self.game.update()
         self.assertTrue(self.game.playerpos(2)==(10010,10010,10010),"teleport wrong")
 
     def testlongAttack(self):
         self.game.upgradeSkill(2,"longAttack")
-        self.game.castSkill(2,"longAttack",((1, 1, 1)))
+        self.game.castSkill(2,"longAttack",speed=(1, 1, 1))
         self.assertTrue(self.player2.health==1000,"longAttack to fast")
         self.game.update()
         self.assertTrue(self.player1.health>1331,"longAttack speed is wrong")
