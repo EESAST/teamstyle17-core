@@ -29,3 +29,4 @@ class Interface:
 
     def nextTick(self):
         self.game.update()
+        return self.game.getFieldJson(-1)

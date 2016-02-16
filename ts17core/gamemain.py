@@ -73,6 +73,7 @@ class GameMain:
         self._players = {}
         # 保存其他物体的信息，应以“物体ID:物体信息”形式保存，物体信息的类型和格式可自行规定
         self._objects = {}
+        self._lastobjects={}
         # 场景管理器，物体和玩家的位置、大小的信息记录在这里面。详情参考scene.py中的注释
         self._scene = scene.Octree(self._mapSize)
         # 存储该回合内施放了但未结算的技能，以“玩家ID:技能名”形式保存，每回合应清空一次
@@ -87,6 +88,8 @@ class GameMain:
         self._nutrientFlushTime = 0
         # 营养源刷新位置
         self._nutrientFlushPos = [tuple(self._mapSize//2 for _ in range(3))]
+        #局面变化情况
+        self._lastObjectist=[];
 
     #player位置获取
     def playerpos(self,ID):
@@ -281,13 +284,35 @@ class GameMain:
     # 若playerId为-1则返回全局所有物体，否则只返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
         objectList = []
+        changelist = []
         if aiId == -1:
-            for playerId in self._players.keys():
-                sphere = self._scene.getObject(playerId)
-                objectList.append({"id": playerId, "type": "player", "pos": sphere.center, "r": sphere.radius})
-            for objectId, status in self._objects:
-                sphere = self._scene.getObject(objectId)
-                objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
+           for info in self._lastObjectist:
+                if info["type"]=="player":
+                    sphere = self._scene.getObject(info["id"])
+                    objectList.append({"id": playerId, "type": "player", "pos": sphere.center, "r": sphere.radius})
+                    if sphere.center!=info["pos"] or sphere.radius!=info["r"] :
+                        changelist.append({"id": info["id"], "type": "player", "pos1": info["pos"], "r1":info["r"], "pos2": sphere.center, "r2": sphere.radius})
+                elif info["type"]=="spike" or info["type"]=="food" or info["type"]=="nutrient":
+                    if info["id"] in self._objects :
+                        objectList.append(info)
+                    else:
+                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": (-1,-1,-1), "r2": -1})
+                else:
+                    if info["id"] in self._objects :
+                        sphere = self._scene.getObject(info["id"])
+                        objectList.append({"id": playerId, "type": info["type"], "pos": sphere.center, "r": sphere.radius})
+                        if sphere.center!=info["pos"] or sphere.radius!=info["r"] :
+                             changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": sphere.center, "r2": sphere.radius})
+                    else:
+                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": (-1,-1,-1), "r2": -1})
+           for objectId, status in self._objects:
+               if objectId not in self._lastobjects:
+                    sphere = self._scene.getObject(objectId)
+                    objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
+                    changelist.append({"id": info["id"], "type": info["type"], "pos1":(-1,-1,-1),"r1":-1,"pos2": info["pos"], "r2":info["r"]})
+           self._lastObjectist=objectList
+           self._lastobjects=self._objects;
+           return json.dumps({"ai_id": aiId, "objects": changelist})
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
@@ -298,7 +323,7 @@ class GameMain:
                 else:
                     objType = self._objects.get(objectId).type
                 objectList.append({"id": objectId, "type": objType, "pos": sphere.center, "r": sphere.radius})
-        return json.dumps({"ai_id": aiId, "objects": objectList})
+            return json.dumps({"ai_id": aiId, "objects": objectList})
 
     def getStatusJson(self):
         infoList = []
