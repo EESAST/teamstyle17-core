@@ -183,6 +183,7 @@ class GameMaintest(unittest.TestCase):
         self.assertTrue(self.player1.health >= now + now1)
         self.assertTrue(self.game._gameend)
 
+
     def tsetshortattack(self):
         self.player2.speed=(50,50,50);
         self.update();

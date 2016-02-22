@@ -209,14 +209,14 @@ class GameMain:
             self._scene.insert(food, foodId)
             self._foodCount+=1
 
-        '''if self._nutrientFlushTime == 0:
+        if self._nutrientFlushTime == 0:
             pos = self._rand.randIn(len(self._nutrientFlushPos))
             nutrientId = int(2000000+pos)
             time=0
             while self._objects.get(nutrientId) is not None:
                 pos = self._rand.randIn(len(self._nutrientFlushPos))
                 nutrientId = int(2000000+pos)
-                ++time
+                time+=1
                 if time>10 :
                     break
             if time<=10:
@@ -225,7 +225,7 @@ class GameMain:
                 self._scene.insert(nutrient, nutrientId)
                 self._nutrientFlushTime = self._rand.randIn(11) + 10
         else:
-           self._nutrientFlushTime -= 1'''
+           self._nutrientFlushTime -= 1
 
     # 5、时间+1
     # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
