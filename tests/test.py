@@ -207,7 +207,7 @@ class GameMaintest(unittest.TestCase):
     def testlongAttack(self):
         self.player2.ability = 100
         self.game.upgradeSkill(2,"longAttack")
-        self.game.castSkill(2,"longAttack",speed=(1, 1, 1))
+        self.game.castSkill(2,"longAttack",player=1)
         self.assertTrue(self.player2.health==1000,"longAttack to fast")
         self.game.update()
         self.assertEqual(self.player2.health,990,"no longAttack")
@@ -215,7 +215,6 @@ class GameMaintest(unittest.TestCase):
         temp=self.player1.health
         self.assertTrue(20 in self.game._objects)
         self.game.update()
-        self.assertTrue(self.game.longattack)
-        self.assertTrue(20 not in self.game._objects)
+        self.assertTrue(self.game._objects[20].type=="None")
         self.assertTrue(self.player1.health==temp-100,"longAttack is wrong")
 
