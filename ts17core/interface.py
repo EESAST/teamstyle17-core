@@ -3,13 +3,14 @@ from ts17core import gamemain
 
 
 class Interface:
-    def __init__(self):
+    def __init__(self, callback):
         self.game = None
+        self.callback = callback
 
     def setInstruction(self, instruction: str):
         command = json.loads(instruction)
         if command["action"] == "init":
-            self.game = gamemain.GameMain(command["seed"],command["player"])
+            self.game = gamemain.GameMain(command["seed"],command["player"],self.callback)
         if command["action"] == "move":
             self.game.setVelocity(command["ai_id"], (command["x"], command["y"], command["z"]))
         if command["action"] == "use_skill":

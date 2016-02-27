@@ -5,6 +5,8 @@ import math
 
 class PlayerStatus:
     def __init__(self):
+        # 拥有该物体的AI的ID
+        self.aiId = 0
         # 血量
         self.health = 0
         # 速度矢量
@@ -37,7 +39,7 @@ class ObjectStatus:
 
 
 class BulletStatus():
-    def __init__(self, damage: int, enemy: tuple, speed:int,owner: int,stop:bool):
+    def __init__(self, damage: int, enemy: int, speed:int,owner: int,stop:bool):
         self.type = "bullet"
         self.damage = damage
         self.enemy = enemy
@@ -67,7 +69,7 @@ class CastLongAttackInfo():
         self.player=tplayer
 
 class GameMain:
-    def __init__(self, seed,player_num):
+    def __init__(self, seed, player_num, callback):
         #游戏结束标志
         self._gameend=False
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
@@ -76,9 +78,10 @@ class GameMain:
         self._time = 0
         # 保存玩家信息，应以“玩家ID:PlayerStatus”形式保存
         self._players = {}
-        # 保存其他物体的信息，应以“物体ID:物体信息”形式保存，物体信息的类型和格式可自行规定
+        # 保存其他物体（不含玩家）的信息，应以“物体ID:物体信息”形式保存，物体信息的类型和格式可自行规定
         self._objects = {}
-        self._lastobjects={}
+        # 用于自动向平台发回变化信息的回调函数，调用时以一个json字符串为参数
+        self._callback = callback
         # 场景管理器，物体和玩家的位置、大小的信息记录在这里面。详情参考scene.py中的注释
         self._scene = scene.Octree(self._mapSize)
         # 存储该回合内施放了但未结算的技能，以“玩家ID:技能名”形式保存，每回合应清空一次
@@ -93,8 +96,8 @@ class GameMain:
         self._nutrientFlushTime = 0
         # 营养源刷新位置
         self._nutrientFlushPos = [tuple(self._mapSize//2 for _ in range(3))]
-        #局面变化情况
-        self._lastObjectist=[]
+        # 记录变化情况的json的list，每项为一个json object
+        self._changeList=[]
         #增加玩家
         self.addNewPlayer(0,tuple(self._mapSize//2 for _ in range(3)),20)
         pos1=tuple(self._rand.randIn(self._mapSize) for _ in range(3))
@@ -116,9 +119,48 @@ class GameMain:
         newStatus.health = radius ** 3
         self._players[playerID] = newStatus
 
+    def makeChangeJson(self,id:int,ai_id:int,pos:tuple,r:int):
+        if self._objects.get(id) is not None:
+            objType=self._objects[id].type
+        elif self._players.get(id) is not None:
+            objType="player"
+        else:
+            objType=None
+        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%d,%d,%d],"r":%d}'\
+               % (self._time, id, ai_id, objType, pos[0], pos[1], pos[2], r)
+
+    def makeDeleteJson(self,id:int):
+        return '{"info":"delete","time":%d,"id":%d}' % (self._time, id)
+
+    # 若target为None则没有目标物体，pos为None则没有目标坐标
+    def makeSkillCastJson(self,source:int,skillType:str,target:int,pos:tuple):
+        if target is not None:
+            targetStr =',"target":%d' % target
+        else:
+            targetStr = ''
+        if pos is not None:
+            posStr = ',"x":%d,"y":%d,"z":%d' % pos
+        else:
+            posStr = ''
+        return '{"info":"skill_cast","time":%d,"source":%d,"type":%s%s%s}'\
+               % (self._time, source, skillType, targetStr, posStr)
+
+    def makeSkillHitJson(self,skillType:str,target:int):
+        return '{"info":"skill_hit","time":%d,"type":%s,"target":%d}' % (self._time, skillType, target)
+
+    def makePlayerJson(self,playerId:int):
+        status=self._players[playerId]
+        skillList=",".join('{"name":%s,"level":%d}' % pair for pair in status.skills.items())
+        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}'\
+               % (self._time, playerId, status.aiId, status.health, status.vision, status.ability, skillList)
+
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
     def update(self):
+        # 初始化返回给平台的变化信息的json List
+        self._changeList=[]
+        self._changedPlayer=set()
+
         # 1、结算技能效果
         # TODO 远程攻击和瞬间移动的满级效果没有写
         for playerId in self._castSkills:
@@ -158,6 +200,7 @@ class GameMain:
             insideList = self._scene.intersect(sphere, True)
             eatableList = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < sphere.radius]
             for objId in eatableList:
+                self._changeList.append(self.makeDeleteJson(objId))
                 if self._players.get(objId) is not None:
                     if self._players[objId].shieldTime == 0 or (self._players[objId].skills["shield"] < 4 and self._players[objId].shiledLevel<4):
                         self.healthUp(playerId, self._players[objId].health)
@@ -212,6 +255,7 @@ class GameMain:
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
             self._foodCount+=1
+            self._changeList.append(self.makeChangeJson(foodId,-2,center,0))
 
         if self._nutrientFlushTime == 0:
             pos = self._rand.randIn(len(self._nutrientFlushPos))
@@ -231,8 +275,8 @@ class GameMain:
         else:
            self._nutrientFlushTime -= 1
 
-    # 5、时间+1
-    # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
+        # 5、时间+1
+        # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
         self._time += 1
         for playerId in self._players.keys():
             if self._players[playerId].shieldTime > 0:
@@ -245,8 +289,15 @@ class GameMain:
                 if self._players[playerId].skillsCD[skillName] > 0:
                     self._players[playerId].skillsCD[skillName] -= 1
 
+        for playerId in self._changedPlayer:
+            self._changeList.append(self.makePlayerJson(playerId))
+        # 调用回调函数，向平台传回变化信息
+        self._callback("["+",".join(self._changeList)+"]")
+
     # 生命下降，作用物体Id为objId, 受到伤害damage
     def healthDown(self, objId: int, damage):
+        if self._players.get(objId) is not None:
+            self._changedPlayer.add(objId)
         if objId == 0:
             oldHealth = self._objects[0].health
             newHealth = oldHealth - damage
@@ -304,6 +355,11 @@ class GameMain:
         else:
             newSphere = scene.Sphere(pos, radius)
             self._scene.modify(newSphere, Id)
+        if self._players.get(Id) is None:
+            aiId=-2
+        else:
+            aiId=self._players[Id].aiId
+        self._changeList.append(self.makeChangeJson(Id,-2,newSphere.center,newSphere.radius))
 
     # 若playerId为-1则返回全局所有物体，否则只返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
@@ -374,7 +430,7 @@ class GameMain:
                 if skillName=='teleport':
                     self._castSkills[playerId] = CastTeleportInfo(kw['dst'])
                 elif skillName=='longAttack':
-                    self._castSkills[playerId]=CastLongAttackInfo(kw['player'])
+                    self._castSkills[playerId] = CastLongAttackInfo(kw['player'])
                 else:
                     self._castSkills[playerId] = CastSkillInfo(skillName)
 
@@ -383,10 +439,8 @@ class GameMain:
         velocity = sum(x ** 2 for x in self._players[playerId].speed) ** 0.5
         return tuple(x / velocity for x in self._players[playerId].speed)
 
-
-
     # 远程攻击，参数为使用者Id
-    def longAttack(self, playerId: int,enemy:int):
+    def longAttack(self, playerId: int, enemy:int):
         skillLevel = self._players[playerId].skills['longAttack']
         damage = 100 * skillLevel
         stop=False
@@ -403,10 +457,8 @@ class GameMain:
             i += 1
         bulletID = int(str(playerId) + str(i))
         self._scene.insert(bullet, bulletID)
-        self._objects[bulletID] = BulletStatus(damage, enemy,speed, playerId,stop)
-
-
-
+        self._objects[bulletID] = BulletStatus(damage, enemy, speed, playerId,stop)
+        self._changeList.append(self.makeSkillCastJson(playerId, 'longAttack', enemy, None))
 
     # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
@@ -415,13 +467,16 @@ class GameMain:
         Range = 100 + 10 * (skillLevel - 1)
         self.healthDown(playerId, 50)
         self._players[playerId].skillsCD['shortAttack'] = 80
+        self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack', None, None))
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
         virtualSphere = scene.Sphere(self.getCenter(playerId), Range)
         for objId in self._scene.intersect(virtualSphere):
             if self._objects.get(objId) is not None and self._objects[objId].type == "target":
                 self.healthDown(0, damage)
+                self._changeList.append(self.makeSkillHitJson('shortAttack', objId))
             elif self._players.get(objId) is not None and objId != playerId and self._players[playerId].shieldTime == 0:
                 self.healthDown(objId, damage)
+                self._changeList.append(self.makeSkillHitJson('shortAttack', objId))
         if skillLevel == 5:
             #self._players[playerId].shieldTime = 30
             self._players[playerId].shieldLevel =34
@@ -431,6 +486,7 @@ class GameMain:
         skillLevel = self._players[playerId].skills['shield']
         self._players[playerId].shieldTime = 81 + 20 * skillLevel
         self._players[playerId].skillsCD['shield'] = 100
+        self._changeList.append(self.makeSkillCastJson(playerId, 'shield', None, None))
 
     # 计算两点pos1, pos2距离
     def dis(self, pos1: tuple, pos2: tuple):
@@ -473,21 +529,24 @@ class GameMain:
         self._players[playerId].skillsCD['teleport'] = 100
         newSphere = scene.Sphere(pos2,sphere.radius)
         self._scene.modify(newSphere,playerId)
+        self._changeList.append(self.makeChangeJson(playerId,self._players[playerId].aiId,pos2,newSphere.radius))
 
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
         skillLevel = self._players[playerId].skills['visionUp']
         self._players[playerId].vision = 1000 + 500 * skillLevel
+        self._changedPlayer.add(playerId)
+        self._changeList.append(self.makeSkillCastJson(playerId, 'visionUp', None, None))
 
     # 生命回复，参数为使用者Id
     def healthUp(self, playerId: int, num: int):
         self.healthDown(playerId, -num)
+        self._changedPlayer.add(playerId)
+        self._changeList.append(self.makeSkillCastJson(playerId, 'healthUp', None, None))
 
     # 获取球心
     def getCenter(self, Id: int):
         return self._scene.getObject(Id).center
-
-
 
     # 获取半径
     def getRadius(self, Id: int):
@@ -498,6 +557,7 @@ class GameMain:
         if self._players[playerId].skills.get(skillName) is not None:
             price = self._skillPrice[skillName] * 2 ** self._players[playerId].skills[skillName]
             if self._players[playerId].ability >= price and self._players[playerId].skills[skillName] < 5:
+                self._changedPlayer.add(playerId)
                 self._players[playerId].skills[skillName] += 1
                 self._players[playerId].ability -= price
                 if (skillName=="visionUp"):
@@ -507,6 +567,7 @@ class GameMain:
         elif self._players[playerId].skills.get(skillName) is None:
             price = self._skillPrice[skillName] * 2 ** len(self._players[playerId].skills)
             if self._players[playerId].ability >= price:
+                self._changedPlayer.add(playerId)
                 self._players[playerId].skills[skillName] = 1
                 self._players[playerId].ability -= price
                 self._players[playerId].skillsCD[skillName] = 0
@@ -517,3 +578,4 @@ class GameMain:
 
     def gameEnd(self):
         self._gameend=True
+        self._changeList.append('{"info":"end","time":%d,"ai_id":%d}' % (self._time, -2))
