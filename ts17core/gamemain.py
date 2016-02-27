@@ -437,7 +437,8 @@ class GameMain:
 
     #判断远程攻击是否可以命中
     def longAttackbullet(self,bulletId:int):
-        if (self.dis(self._scene.getObject(bulletId).center,self._scene.getObject(self._objects[bulletId].enemy).center)<self._objects[bulletId].speed):
+        if (self.dis(self._scene.getObject(bulletId).center,self._scene.getObject(self._objects[bulletId].enemy).center)<
+                    self._scene.getObject(self._objects[bulletId].enemy).radius+self._objects[bulletId].speed):
             if self._players[self._objects[bulletId].enemy].shieldTime==0 and self._players[self._objects[bulletId].enemy].shieldLevel<5:
                 self.healthDown(self._objects[bulletId].enemy, self._objects[bulletId].damage)
             if (self._objects[bulletId].stop==True):
