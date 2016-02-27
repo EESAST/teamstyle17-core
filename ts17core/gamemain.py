@@ -25,6 +25,12 @@ class PlayerStatus:
         self.teleportTime = 0
         #不可移动时间
         self.stoptime=0
+        #历史最大血量
+        self.maxhealth=self.health
+
+    def max_health(self):
+        if self.health>self.maxhealth:
+            self.maxhealth=self.health
 
 
 
@@ -44,13 +50,6 @@ class BulletStatus():
         self.owner = owner
         self.stop=stop
         self.speed=speed
-
-
-class TargetStatus():
-    def __init__(self):
-        self.type = "target"
-        self.health = 10000
-
 
 class CastSkillInfo():
     def __init__(self,name):
@@ -138,21 +137,23 @@ class GameMain:
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
         # TODO 关于物体触碰边界可以作更为细致的处理
         for playerId in self._players.keys():
+            if playerId==0:
+                x = self._rand.randIn(10)
+                y = self._rand.randIn(10)
+                z = self._rand.randIn(10)
+                self.move(playerId, (x, y, z), self._scene.getObject(playerId).radius)
+                continue
             if self._players[playerId].stoptime==0:
                 self.move(playerId, self._players[playerId].speed, self._scene.getObject(playerId).radius)
         for objId in self._objects.keys():
             if self._objects[objId].type == "bullet":
                 if self.longAttackbullet(objId)==False:
                     self.move(objId, (0,0,0), 0, True)
-            # 目标生物行动缓慢，每回合随机游走，每个方向的速度为0~9
-            elif self._objects[objId].type == "target":
-                x = self._rand.randIn(10)
-                y = self._rand.randIn(10)
-                z = self._rand.randIn(10)
-                self.move(objId, (x, y, z), self._scene.getObject(objId).radius)
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
         for playerId in self._players.keys():
+            if playerId==0:
+                continue
             sphere = self._scene.getObject(playerId)
             # 玩家AI可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
             insideList = self._scene.intersect(sphere, True)
@@ -168,16 +169,12 @@ class GameMain:
                     self.healthUp(playerId, 10)
                     self._scene.delete(objId)
                     self._objects.pop(objId)
+                    self._foodCount-=1;
                 elif objType == "nutrient":
                     self.healthUp(playerId, self._rand.rand() % 301 + 200)
                     self._players[playerId].ability += self._rand.rand() % 5 + 1
                     self._objects.pop(objId)
                     self._scene.delete(objId)
-                elif objType == "target":
-                    self.healthUp(playerId, self._objects[objId].health)
-                    self._objects.pop(objId)
-                    self._scene.delete(objId)
-                    self.gameEnd()
             # 玩家AI接触到的物体对其产生效果，包括受到刺球伤害及子弹伤害
             touchList = self._scene.intersect(sphere, False)
             for objId in touchList:
@@ -201,6 +198,14 @@ class GameMain:
                 self.healthUp(0, self._players[objId].health)
                 self._scene.delete(objId)
                 self._players.pop(objId)
+                self.gameEnd()
+
+        #判断是否有球体生命值小于历史最大值四分之一，有则死亡
+        for playerId in self._players:
+            if playerId==0:
+                continue
+            if self._players[playerId].health*4<self._players[playerId].maxhealth:
+                self.gameEnd()
 
         # 4、随机产生新的食物等,暂且每回合10个食饵,每隔10-20回合刷新一个营养源;
         # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
@@ -212,6 +217,8 @@ class GameMain:
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
             self._foodCount+=1
+            if self._foodCount>1000:
+                break
 
         if self._nutrientFlushTime == 0:
             pos = self._rand.randIn(len(self._nutrientFlushPos))
@@ -248,7 +255,7 @@ class GameMain:
     # 生命下降，作用物体Id为objId, 受到伤害damage
     def healthDown(self, objId: int, damage):
         if objId == 0:
-            oldHealth = self._objects[0].health
+            oldHealth = self._players[0].health
             newHealth = oldHealth - damage
             # TODO 如果目标生物被远程攻击消灭怎么办？
             # 目标生物死就死了，这局就没有目标生物吧，这可以作为一种战术 -- cai_lw 16/2/27
@@ -259,7 +266,7 @@ class GameMain:
             newRadius = self._scene.getObject(0).radius * (newHealth / oldHealth) ** (1 / 3)
             newSphere = scene.Sphere(self._scene.getObject(0).center, newRadius)
             self._scene.modify(newSphere, 0)
-            self._objects[0].health = newHealth
+            self._players[0].health = newHealth
         else:
             oldHealth = self._players[objId].health
             newHealth = oldHealth - damage
@@ -329,11 +336,12 @@ class GameMain:
                              changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": sphere.center, "r2": sphere.radius})
                     else:
                         changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": (-1,-1,-1), "r2": -1})
-           for objectId, status in self._objects:
+           for objectId in self._objects:
+               status=self._objects[objectId]
                if objectId not in self._lastobjects:
                     sphere = self._scene.getObject(objectId)
                     objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
-                    changelist.append({"id": info["id"], "type": info["type"], "pos1":(-1,-1,-1),"r1":-1,"pos2": info["pos"], "r2":info["r"]})
+                    changelist.append({"id": objectId, "type": status.type, "pos1":(-1,-1,-1),"r1":-1,"pos2": sphere.center, "r2":sphere.radius})
            self._lastObjectist=objectList
            self._lastobjects=self._objects
            return json.dumps({"ai_id": aiId, "objects": changelist})
@@ -354,7 +362,7 @@ class GameMain:
         for playerId, status in self._players.items():
             info = {"id": playerId, "health": status.health, "vision": status.vision, "ability": status.ability}
             skillList = []
-            for name, level in status.skills:
+            for name, level in status.skills.items():
                 skillList.append({"name": name, "level": level})
             info["skills"] = skillList
             infoList.append(info)
@@ -418,9 +426,7 @@ class GameMain:
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
         virtualSphere = scene.Sphere(self.getCenter(playerId), Range)
         for objId in self._scene.intersect(virtualSphere):
-            if self._objects.get(objId) is not None and self._objects[objId].type == "target":
-                self.healthDown(0, damage)
-            elif self._players.get(objId) is not None and objId != playerId and self._players[playerId].shieldTime == 0:
+            if self._players.get(objId) is not None and objId != playerId and self._players[playerId].shieldTime == 0:
                 self.healthDown(objId, damage)
         if skillLevel == 5:
             #self._players[playerId].shieldTime = 30

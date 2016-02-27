@@ -16,7 +16,7 @@ class Interface:
             if command["skill_type"]=="teleport":
                 self.game.castSkill(command["ai_id"], "teleport", dst=(command["x"],command["y"],command["z"]))
             elif command["skill_type"]=="longAttack":
-                self.game.castSkill(command["ai_id"],"longAttack",player=tuple(command["player"]))
+                self.game.castSkill(command["ai_id"],"longAttack",player=command["target"])
             else:
                 self.game.castSkill(command["ai_id"], command["skill_type"])
         if command["action"] == "upgrade_skill":
