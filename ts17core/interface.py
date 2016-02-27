@@ -9,12 +9,14 @@ class Interface:
     def setInstruction(self, instruction: str):
         command = json.loads(instruction)
         if command["action"] == "init":
-            self.game = gamemain.GameMain(command["seed"])
+            self.game = gamemain.GameMain(command["seed"],command["player"])
         if command["action"] == "move":
             self.game.setVelocity(command["ai_id"], (command["x"], command["y"], command["z"]))
         if command["action"] == "use_skill":
             if command["skill_type"]=="teleport":
                 self.game.castSkill(command["ai_id"], "teleport", dst=tuple(command["dst"]))
+            elif command["skill_type"]=="longAttack":
+                self.game.castSkill(command["ai_id"],"longAttack",player=tuple(command["player"]))
             else:
                 self.game.castSkill(command["ai_id"], command["skill_type"])
         if command["action"] == "upgrade_skill":
