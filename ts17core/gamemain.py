@@ -67,7 +67,7 @@ class CastLongAttackInfo():
         self.player=tplayer;
 
 class GameMain:
-    def __init__(self, seed):
+    def __init__(self, seed,player_num):
         #游戏结束标志
         self._gameend=False
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
@@ -95,6 +95,14 @@ class GameMain:
         self._nutrientFlushPos = [tuple(self._mapSize//2 for _ in range(3))]
         #局面变化情况
         self._lastObjectist=[];
+        #增加玩家
+        self.addNewPlayer(0,tuple(self._mapSize//2 for _ in range(3)),20)
+        pos1=tuple(self._rnd(self._mapSize) for _ in range(3))
+        pos2=tuple(self._mapSize-pos1[x] for x in range(3))
+        self.addNewPlayer(1,pos1,10)
+        self.addNewPlayer(2,pos2,10)
+
+
 
     #player位置获取
     def playerpos(self,ID):
