@@ -64,7 +64,7 @@ class CastTeleportInfo():
 class CastLongAttackInfo():
     def __init__(self,tplayer):
         self.name="longAttack"
-        self.player=tplayer;
+        self.player=tplayer
 
 class GameMain:
     def __init__(self, seed,player_num):
@@ -94,10 +94,10 @@ class GameMain:
         # 营养源刷新位置
         self._nutrientFlushPos = [tuple(self._mapSize//2 for _ in range(3))]
         #局面变化情况
-        self._lastObjectist=[];
+        self._lastObjectist=[]
         #增加玩家
         self.addNewPlayer(0,tuple(self._mapSize//2 for _ in range(3)),20)
-        pos1=tuple(self._rnd(self._mapSize) for _ in range(3))
+        pos1=tuple(self._rand.randIn(self._mapSize) for _ in range(3))
         pos2=tuple(self._mapSize-pos1[x] for x in range(3))
         self.addNewPlayer(1,pos1,10)
         self.addNewPlayer(2,pos2,10)
@@ -251,6 +251,7 @@ class GameMain:
             oldHealth = self._objects[0].health
             newHealth = oldHealth - damage
             # TODO 如果目标生物被远程攻击消灭怎么办？
+            # 目标生物死就死了，这局就没有目标生物吧，这可以作为一种战术 -- cai_lw 16/2/27
             if newHealth <= 0:
                 self._objects.pop(0)
                 self._scene.delete(0)
@@ -334,7 +335,7 @@ class GameMain:
                     objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
                     changelist.append({"id": info["id"], "type": info["type"], "pos1":(-1,-1,-1),"r1":-1,"pos2": info["pos"], "r2":info["r"]})
            self._lastObjectist=objectList
-           self._lastobjects=self._objects;
+           self._lastobjects=self._objects
            return json.dumps({"ai_id": aiId, "objects": changelist})
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
@@ -350,7 +351,7 @@ class GameMain:
 
     def getStatusJson(self):
         infoList = []
-        for playerId, status in self._players:
+        for playerId, status in self._players.items():
             info = {"id": playerId, "health": status.health, "vision": status.vision, "ability": status.ability}
             skillList = []
             for name, level in status.skills:
