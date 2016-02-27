@@ -97,7 +97,7 @@ class GameMain:
         self._lastObjectist=[];
         #增加玩家
         self.addNewPlayer(0,tuple(self._mapSize//2 for _ in range(3)),20)
-        pos1=tuple(self._rnd(self._mapSize) for _ in range(3))
+        pos1=tuple(self._rand(self._mapSize) for _ in range(3))
         pos2=tuple(self._mapSize-pos1[x] for x in range(3))
         self.addNewPlayer(1,pos1,10)
         self.addNewPlayer(2,pos2,10)
