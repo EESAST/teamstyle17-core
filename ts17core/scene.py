@@ -82,23 +82,14 @@ class Octree:
                 self.children[int(route[0])].delete(objId, route[1:])
 
         def intersect(self, obj: Sphere, tree, centerOnly: bool) -> list:
-            def norm(p: tuple) -> float:
-                return sum(p[i] ** 2 for i in range(3)) ** 0.5
-
-            def vec(p1: tuple, p2: tuple) -> tuple:
-                return tuple(p2[i] - p1[i] for i in range(3))
-
-            def dot(p1: tuple, p2: tuple) -> int:
-                return sum(p1[i] * p2[i] for i in range(3))
-
-            def cross(p1: tuple, p2: tuple) -> tuple:
-                return (p1[1] * p2[2] - p1[2] * p2[1], p1[2] * p2[0] - p1[0] * p2[2], p1[0] * p2[1] - p1[1] * p2[0])
+            def dist(p1: tuple, p2: tuple) -> float:
+                return sum((p1[i]-p2[i]) ** 2 for i in range(3)) ** 0.5
 
             def insideSphere(obj: Sphere, point: tuple) -> bool:
-                return norm(vec(obj.center, point)) < obj.radius
+                return dist(obj.center, point) < obj.radius
 
             def intersectWithSphere(obj1: Sphere, obj2: Sphere) -> bool:
-                return norm(vec(obj1.center, obj2.center)) < obj1.radius + obj2.radius
+                return dist(obj1.center, obj2.center) < obj1.radius + obj2.radius
 
             def intersectWithBox(obj: Sphere, small: tuple, big: tuple) -> bool:
                 # 使用这里的算法 http://stackoverflow.com/questions/4578967/cube-sphere-intersection-test
