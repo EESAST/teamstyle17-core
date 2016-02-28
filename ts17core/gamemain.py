@@ -379,16 +379,26 @@ class GameMain:
     # 返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
         objectList = []
-        visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
-        visibleList = self._scene.intersect(visionSphere, False)
-        for objectId in visibleList:
-            sphere = self._scene.getObject(objectId)
-            if self._players.get(objectId) is not None:
-                objType = "player"
-            else:
-                objType = self._objects.get(objectId).type
-            objectList.append({"id": objectId, "type": objType, "pos": sphere.center, "r": sphere.radius})
-        return json.dumps({"ai_id": aiId, "objects": objectList})
+        if aiId == -1:
+            for playerId in self._players:
+                sphere =self._scene.getObject(playerId)
+                objectList.append({"id": playerId, "type": "player", "pos": sphere.center, "r": sphere.radius})
+            for objectId in self._objects:
+                status=self._objects[objectId]
+                sphere=self._scene.getObject(objectId)
+                objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
+            return json.dumps({"ai_id": aiId, "objects": objectList})
+        else:
+            visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
+            visibleList = self._scene.intersect(visionSphere, False)
+            for objectId in visibleList:
+                sphere = self._scene.getObject(objectId)
+                if self._players.get(objectId) is not None:
+                    objType = "player"
+                else:
+                    objType = self._objects.get(objectId).type
+                objectList.append({"id": objectId, "type": objType, "pos": sphere.center, "r": sphere.radius})
+            return json.dumps({"ai_id": aiId, "objects": objectList})
 
     def getStatusJson(self):
         infoList = []
