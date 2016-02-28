@@ -378,7 +378,7 @@ class GameMain:
         objectList = []
         changelist = []
         if aiId == -1:
-            for info in self._lastObjectist:
+            '''for info in self._lastObjectist:
                 if info["type"] == "player":
                     sphere = self._scene.getObject(info["id"])
                     objectList.append({"id": info["id"], "type": "player", "pos": sphere.center, "r": sphere.radius})
@@ -413,7 +413,8 @@ class GameMain:
                          "r2": sphere.radius})
             self._lastObjectist = objectList
             self._lastobjects = self._objects
-            return json.dumps({"ai_id": aiId, "objects": changelist})
+            return json.dumps({"ai_id": aiId, "objects": changelist})'''
+			pass
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
