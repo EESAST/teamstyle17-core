@@ -376,45 +376,15 @@ class GameMain:
     # 若playerId为-1则返回全局所有物体，否则只返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
         objectList = []
-        changelist = []
         if aiId == -1:
-            '''for info in self._lastObjectist:
-                if info["type"] == "player":
-                    sphere = self._scene.getObject(info["id"])
-                    objectList.append({"id": info["id"], "type": "player", "pos": sphere.center, "r": sphere.radius})
-                    if sphere.center != info["pos"] or sphere.radius != info["r"]:
-                        changelist.append({"id": info["id"], "type": "player", "pos1": info["pos"], "r1": info["r"],
-                                           "pos2": sphere.center, "r2": sphere.radius})
-                elif info["type"] == "spike" or info["type"] == "food" or info["type"] == "nutrient":
-                    if info["id"] in self._objects:
-                        objectList.append(info)
-                    else:
-                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1": info["r"],
-                                           "pos2": (-1, -1, -1), "r2": -1})
-                else:
-                    if info["id"] in self._objects:
-                        sphere = self._scene.getObject(info["id"])
-                        objectList.append(
-                            {"id": info["id"], "type": info["type"], "pos": sphere.center, "r": sphere.radius})
-                        if sphere.center != info["pos"] or sphere.radius != info["r"]:
-                            changelist.append(
-                                {"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1": info["r"],
-                                 "pos2": sphere.center, "r2": sphere.radius})
-                    else:
-                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1": info["r"],
-                                           "pos2": (-1, -1, -1), "r2": -1})
+			for playerId in self._players:
+				sphere = self._scene.getObject(playerId)
+                objectList.append({"id": playerId, "type": "player", "pos": sphere.center, "r": sphere.radius})
             for objectId in self._objects:
-                status = self._objects[objectId]
-                if objectId not in self._lastobjects:
-                    sphere = self._scene.getObject(objectId)
-                    objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
-                    changelist.append(
-                        {"id": objectId, "type": status.type, "pos1": (-1, -1, -1), "r1": -1, "pos2": sphere.center,
-                         "r2": sphere.radius})
-            self._lastObjectist = objectList
-            self._lastobjects = self._objects
-            return json.dumps({"ai_id": aiId, "objects": changelist})'''
-			pass
+				status=self._objects[objectId]
+				sphere=self._scene.getObject(objectId)
+				objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
+			return json.dumps({"ai_id": aiId, "objects": changelist})
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
