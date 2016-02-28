@@ -128,7 +128,7 @@ class GameMain:
             objType = "player"
         else:
             objType = None
-        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%f,%f,%f],"r":%f}' \
+        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
                % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r)
 
     def makeDeleteJson(self, playerId: int):
@@ -141,7 +141,7 @@ class GameMain:
         else:
             targetStr = ''
         if pos is not None:
-            posStr = ',"x":%f,"y":%f,"z":%f' % pos
+            posStr = ',"x":%.10f,"y":%.10f,"z":%.10f' % pos
         else:
             posStr = ''
         return '{"info":"skill_cast","time":%d,"source":%d,"type":%s%s%s}' \
@@ -376,19 +376,21 @@ class GameMain:
             aiId = self._players[Id].aiId
         self._changeList.append(self.makeChangeJson(Id, -2, newSphere.center, newSphere.radius))
 
-    # 返回该ID玩家视野内物体
+    # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
+        def makeObjectJson(objId, objType, pos, r):
+            return '{"id":%d,"type":%s,"pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
+                   % (objId, objType, pos[0], pos[1], pos[2], r)
+
         objectList = []
         if aiId == -1:
             for playerId in self._players:
                 sphere = self._scene.getObject(playerId)
-                objectList.append(
-                    '{"id":%d,"type":"player","pos":%f,"r":%f}' % (playerId, sphere.center, sphere.radius))
+                objectList.append(makeObjectJson(playerId, "player", sphere.center, sphere.radius))
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
-                objectList.append(
-                    '{"id":%d,"type":%s,"pos":%f,"r":%f}' % (objectId, status.type, sphere.center, sphere.radius))
+                objectList.append(makeObjectJson(objectId, status.type, sphere.center, sphere.radius))
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
@@ -398,17 +400,16 @@ class GameMain:
                     objType = "player"
                 else:
                     objType = self._objects.get(objectId).type
-                objectList.append(
-                    '{"id":%d,"type":%s,"pos":%f,"r":%f}' % (objectId, objType, sphere.center, sphere.radius))
-        return '{"ai_id":%d,"objects":[%s]' % (aiId, ','.join(objectList))
+                objectList.append(makeObjectJson(objectId, objType, sphere.center, sphere.radius))
+        return '{"ai_id":%d,"objects":[%s]}' % (aiId, ','.join(objectList))
 
     def getStatusJson(self):
         infoList = []
         for playerId, status in self._players.items():
             skillList = []
             for name, level in status.skills.items():
-                skillList.append('{"name":%s,"level":%d}' % (name,level))
-            info = '{"id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}'\
+                skillList.append('{"name":%s,"level":%d}' % (name, level))
+            info = '{"id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
                    % (playerId, status.health, status.vision, status.ability, ','.join(skillList))
             infoList.append(info)
         return '{"players":[%s]}' % ','.join(infoList)
