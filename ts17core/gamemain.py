@@ -128,7 +128,7 @@ class GameMain:
             objType = "player"
         else:
             objType = None
-        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
+        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
                % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r)
 
     def makeDeleteJson(self, playerId: int):
@@ -144,15 +144,15 @@ class GameMain:
             posStr = ',"x":%.10f,"y":%.10f,"z":%.10f' % pos
         else:
             posStr = ''
-        return '{"info":"skill_cast","time":%d,"source":%d,"type":%s%s%s}' \
+        return '{"info":"skill_cast","time":%d,"source":%d,"type":"%s"%s%s}' \
                % (self._time, source, skillType, targetStr, posStr)
 
     def makeSkillHitJson(self, skillType: str, target: int):
-        return '{"info":"skill_hit","time":%d,"type":%s,"target":%d}' % (self._time, skillType, target)
+        return '{"info":"skill_hit","time":%d,"type":"%s","target":%d}' % (self._time, skillType, target)
 
     def makePlayerJson(self, playerId: int):
         status = self._players[playerId]
-        skillList = ",".join('{"name":%s,"level":%d}' % pair for pair in status.skills.items())
+        skillList = ",".join('{"name":"%s","level":%d}' % pair for pair in status.skills.items())
         return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
                % (self._time, playerId, status.aiId, status.health, status.vision, status.ability, skillList)
 
@@ -379,7 +379,7 @@ class GameMain:
     # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
         def makeObjectJson(objId, objType, pos, r):
-            return '{"id":%d,"type":%s,"pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
+            return '{"id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
                    % (objId, objType, pos[0], pos[1], pos[2], r)
 
         objectList = []
@@ -408,7 +408,7 @@ class GameMain:
         for playerId, status in self._players.items():
             skillList = []
             for name, level in status.skills.items():
-                skillList.append('{"name":%s,"level":%d}' % (name, level))
+                skillList.append('{"name":"%s","level":%d}' % (name, level))
             info = '{"id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
                    % (playerId, status.health, status.vision, status.ability, ','.join(skillList))
             infoList.append(info)
