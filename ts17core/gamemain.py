@@ -1,6 +1,6 @@
-from ts17core import scene, myrand
-import json
 import math
+
+from ts17core import scene, myrand
 
 
 class PlayerStatus:
@@ -37,10 +37,10 @@ class PlayerStatus:
 
 # 物体包括：食物（food）、营养源（nutrient）、刺球（spike）、目标生物（target）、远程子弹（bullet）
 class ObjectStatus:
-    def __init__(self, objtype="food"):
+    def __init__(self, objType="food"):
         # 物体类型，以小写英文单词字符串表示
         # bullet为远程攻击的点状物体，target目标生物,生命值暂且按10000算
-        self.type = objtype
+        self.type = objType
 
 
 class BulletStatus():
@@ -128,7 +128,7 @@ class GameMain:
             objType = "player"
         else:
             objType = None
-        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%d,%d,%d],"r":%d}' \
+        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%f,%f,%f],"r":%f}' \
                % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r)
 
     def makeDeleteJson(self, playerId: int):
@@ -141,7 +141,7 @@ class GameMain:
         else:
             targetStr = ''
         if pos is not None:
-            posStr = ',"x":%d,"y":%d,"z":%d' % pos
+            posStr = ',"x":%f,"y":%f,"z":%f' % pos
         else:
             posStr = ''
         return '{"info":"skill_cast","time":%d,"source":%d,"type":%s%s%s}' \
@@ -202,7 +202,7 @@ class GameMain:
             sphere = self._scene.getObject(playerId)
             # 玩家AI可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
             insideList = self._scene.intersect(sphere, True)
-            eatableList = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < sphere.radius]
+            eatableList = [objId for objId in insideList if 1.2 * self._scene._objs[objId].radius < sphere.radius]
             for objId in eatableList:
                 self._changeList.append(self.makeDeleteJson(objId))
                 eatenPlayer = self._players.get(objId)
@@ -241,7 +241,7 @@ class GameMain:
         target = self._scene.getObject(0)
         if target is not None:
             insideList = self._scene.intersect(target, True)
-            eatableList = [objId for objId in insideList if 1.2 * self._scene.getObject(objId).radius < target.radius]
+            eatableList = [objId for objId in insideList if 1.2 * self._scene._objs[objId].radius < target.radius]
             for objId in eatableList:
                 if self._objects.get(objId) is not None and self._objects[objId].type == "bullet":
                     continue
@@ -381,35 +381,37 @@ class GameMain:
         objectList = []
         if aiId == -1:
             for playerId in self._players:
-                sphere =self._scene.getObject(playerId)
-                objectList.append({"id": playerId, "type": "player", "pos": sphere.center, "r": sphere.radius})
+                sphere = self._scene.getObject(playerId)
+                objectList.append(
+                    '{"id":%d,"type":"player","pos":%f,"r":%f}' % (playerId, sphere.center, sphere.radius))
             for objectId in self._objects:
-                status=self._objects[objectId]
-                sphere=self._scene.getObject(objectId)
-                objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
-            return json.dumps({"ai_id": aiId, "objects": objectList})
+                status = self._objects[objectId]
+                sphere = self._scene._objs[objectId]
+                objectList.append(
+                    '{"id":%d,"type":%s,"pos":%f,"r":%f}' % (objectId, status.type, sphere.center, sphere.radius))
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
             for objectId in visibleList:
-                sphere = self._scene.getObject(objectId)
+                sphere = self._scene._objs[objectId]
                 if self._players.get(objectId) is not None:
                     objType = "player"
                 else:
                     objType = self._objects.get(objectId).type
-                objectList.append({"id": objectId, "type": objType, "pos": sphere.center, "r": sphere.radius})
-            return json.dumps({"ai_id": aiId, "objects": objectList})
+                objectList.append(
+                    '{"id":%d,"type":%s,"pos":%f,"r":%f}' % (objectId, objType, sphere.center, sphere.radius))
+        return '{"ai_id":%d,"objects":[%s]' % (aiId, ','.join(objectList))
 
     def getStatusJson(self):
         infoList = []
         for playerId, status in self._players.items():
-            info = {"id": playerId, "health": status.health, "vision": status.vision, "ability": status.ability}
             skillList = []
             for name, level in status.skills.items():
-                skillList.append({"name": name, "level": level})
-            info["skills"] = skillList
+                skillList.append('{"name":%s,"level":%d}' % (name,level))
+            info = '{"id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}'\
+                   % (playerId, status.health, status.vision, status.ability, ','.join(skillList))
             infoList.append(info)
-        return json.dumps({"players": infoList})
+        return '{"players":[%s]}' % ','.join(infoList)
 
     def setVelocity(self, playerId: int, newSpeed: tuple):
         speedLimit = 10000

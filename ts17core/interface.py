@@ -33,7 +33,6 @@ class Interface:
 
     def nextTick(self):
         self.game.update()
-        return self.game.getFieldJson(-1)
 
     def getGameObject(self):
         return copy.copy(self.game)
