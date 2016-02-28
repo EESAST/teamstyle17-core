@@ -25,15 +25,14 @@ class PlayerStatus:
         self.shieldLevel = 0
         # 最近一次使用瞬间移动后经过的时间（为瞬移满级效果设定）
         self.teleportTime = 0
-        #不可移动时间
-        self.stoptime=0
-        #历史最大血量
-        self.maxhealth=self.health
+        # 不可移动时间
+        self.stopTime = 0
+        # 历史最大血量
+        self.maxHealth = self.health
 
     def max_health(self):
-        if self.health>self.maxhealth:
-            self.maxhealth=self.health
-
+        if self.health > self.maxHealth:
+            self.maxHealth = self.health
 
 
 # 物体包括：食物（food）、营养源（nutrient）、刺球（spike）、目标生物（target）、远程子弹（bullet）
@@ -45,32 +44,36 @@ class ObjectStatus:
 
 
 class BulletStatus():
-    def __init__(self, damage: int, enemy: int, speed:int,owner: int,stop:bool):
+    def __init__(self, damage: int, enemy: int, speed: int, owner: int, stop: bool):
         self.type = "bullet"
         self.damage = damage
         self.enemy = enemy
         self.owner = owner
-        self.stop=stop
-        self.speed=speed
+        self.stop = stop
+        self.speed = speed
+
 
 class CastSkillInfo():
-    def __init__(self,name):
-        self.name=name
+    def __init__(self, name):
+        self.name = name
+
 
 class CastTeleportInfo():
-    def __init__(self,tdst):
-        self.name="teleport"
-        self.dst=tdst
+    def __init__(self, tdst):
+        self.name = "teleport"
+        self.dst = tdst
+
 
 class CastLongAttackInfo():
-    def __init__(self,tplayer):
-        self.name="longAttack"
-        self.player=tplayer
+    def __init__(self, tplayer):
+        self.name = "longAttack"
+        self.player = tplayer
+
 
 class GameMain:
     def __init__(self, seed, player_num, callback):
-        #游戏结束标志
-        self._gameend=False
+        # 游戏结束标志
+        self._gameEnd = False
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
         self._mapSize = 100000
         # 当前时刻，以tick为单位，是非负整数
@@ -94,23 +97,23 @@ class GameMain:
         # 营养源刷新剩余时间
         self._nutrientFlushTime = 0
         # 营养源刷新位置
-        self._nutrientFlushPos = [tuple(self._mapSize//2 for _ in range(3))]
+        self._nutrientFlushPos = [tuple(self._mapSize // 2 for _ in range(3))]
         # 记录变化情况的json的list，每项为一个json object
-        self._changeList=[]
-        #增加玩家
-        self.addNewPlayer(0,tuple(self._mapSize//2 for _ in range(3)),20)
-        pos1=tuple(self._rand.randIn(self._mapSize) for _ in range(3))
-        pos2=tuple(self._mapSize-pos1[x] for x in range(3))
-        self.addNewPlayer(1,pos1,10)
-        self.addNewPlayer(2,pos2,10)
+        self._changeList = []
+        # 记录发生变化的玩家集合，在更新结束时发送这些玩家的变化
+        self._changedPlayer = set()
+        # 增加玩家
+        self.addNewPlayer(0, tuple(self._mapSize // 2 for _ in range(3)), 20)
+        pos1 = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
+        pos2 = tuple(self._mapSize - pos1[x] for x in range(3))
+        self.addNewPlayer(1, pos1, 10)
+        self.addNewPlayer(2, pos2, 10)
 
-
-
-    #player位置获取
-    def playerpos(self,ID):
+    # player位置获取
+    def playerPos(self, ID):
         return self._scene.getObject(ID).center
 
-    #添加新玩家
+    # 添加新玩家
     def addNewPlayer(self, playerID: int, pos: tuple, radius: int):
         player = scene.Sphere(pos, radius)
         self._scene.insert(player, playerID)
@@ -118,57 +121,57 @@ class GameMain:
         newStatus.health = radius ** 3
         self._players[playerID] = newStatus
 
-    def makeChangeJson(self,id:int,ai_id:int,pos:tuple,r:int):
+    def makeChangeJson(self, id: int, ai_id: int, pos: tuple, r: int):
         if self._objects.get(id) is not None:
-            objType=self._objects[id].type
+            objType = self._objects[id].type
         elif self._players.get(id) is not None:
-            objType="player"
+            objType = "player"
         else:
-            objType=None
-        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%d,%d,%d],"r":%d}'\
+            objType = None
+        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%d,%d,%d],"r":%d}' \
                % (self._time, id, ai_id, objType, pos[0], pos[1], pos[2], r)
 
-    def makeDeleteJson(self,id:int):
+    def makeDeleteJson(self, id: int):
         return '{"info":"delete","time":%d,"id":%d}' % (self._time, id)
 
     # 若target为None则没有目标物体，pos为None则没有目标坐标
-    def makeSkillCastJson(self,source:int,skillType:str,target:int,pos:tuple):
+    def makeSkillCastJson(self, source: int, skillType: str, target, pos):
         if target is not None:
-            targetStr =',"target":%d' % target
+            targetStr = ',"target":%d' % target
         else:
             targetStr = ''
         if pos is not None:
             posStr = ',"x":%d,"y":%d,"z":%d' % pos
         else:
             posStr = ''
-        return '{"info":"skill_cast","time":%d,"source":%d,"type":%s%s%s}'\
+        return '{"info":"skill_cast","time":%d,"source":%d,"type":%s%s%s}' \
                % (self._time, source, skillType, targetStr, posStr)
 
-    def makeSkillHitJson(self,skillType:str,target:int):
+    def makeSkillHitJson(self, skillType: str, target: int):
         return '{"info":"skill_hit","time":%d,"type":%s,"target":%d}' % (self._time, skillType, target)
 
-    def makePlayerJson(self,playerId:int):
-        status=self._players[playerId]
-        skillList=",".join('{"name":%s,"level":%d}' % pair for pair in status.skills.items())
-        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}'\
+    def makePlayerJson(self, playerId: int):
+        status = self._players[playerId]
+        skillList = ",".join('{"name":%s,"level":%d}' % pair for pair in status.skills.items())
+        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
                % (self._time, playerId, status.aiId, status.health, status.vision, status.ability, skillList)
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
     def update(self):
         # 初始化返回给平台的变化信息的json List
-        self._changeList=[]
-        self._changedPlayer=set()
+        self._changeList = []
+        self._changedPlayer = set()
 
         # 1、结算技能效果
         # TODO 远程攻击和瞬间移动的满级效果没有写
         for playerId in self._castSkills:
-            skillInfo=self._castSkills[playerId]
-            skillName=skillInfo.name
+            skillInfo = self._castSkills[playerId]
+            skillName = skillInfo.name
             if skillName == 'shortAttack':
                 self.shortAttack(playerId)
             elif skillName == 'longAttack':
-                self.longAttack(playerId,skillInfo.player)
+                self.longAttack(playerId, skillInfo.player)
             elif skillName == 'teleport':
                 self.teleport(playerId, skillInfo.dst)
             elif skillName == 'shield':
@@ -179,22 +182,22 @@ class GameMain:
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
         # TODO 关于物体触碰边界可以作更为细致的处理
         for playerId in self._players.keys():
-            if playerId==0:
+            if playerId == 0:
                 x = self._rand.randIn(10)
                 y = self._rand.randIn(10)
                 z = self._rand.randIn(10)
                 self.move(playerId, (x, y, z), self._scene.getObject(playerId).radius)
                 continue
-            if self._players[playerId].stoptime==0:
+            if self._players[playerId].stopTime == 0:
                 self.move(playerId, self._players[playerId].speed, self._scene.getObject(playerId).radius)
         for objId in self._objects.keys():
             if self._objects[objId].type == "bullet":
-                if self.longAttackbullet(objId)==False:
-                    self.move(objId, (0,0,0), 0, True)
+                if self.longAttackbullet(objId) == False:
+                    self.move(objId, (0, 0, 0), 0, True)
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
         for playerId in self._players.keys():
-            if playerId==0:
+            if playerId == 0:
                 continue
             sphere = self._scene.getObject(playerId)
             # 玩家AI可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
@@ -203,7 +206,8 @@ class GameMain:
             for objId in eatableList:
                 self._changeList.append(self.makeDeleteJson(objId))
                 if self._players.get(objId) is not None:
-                    if self._players[objId].shieldTime == 0 or (self._players[objId].skills["shield"] < 4 and self._players[objId].shiledLevel<4):
+                    if self._players[objId].shieldTime == 0 or (
+                            self._players[objId].skills["shield"] < 4 and self._players[objId].shiledLevel < 4):
                         self.healthUp(playerId, self._players[objId].health)
                         self.gameEnd()
                     continue
@@ -212,7 +216,7 @@ class GameMain:
                     self.healthUp(playerId, 10)
                     self._scene.delete(objId)
                     self._objects.pop(objId)
-                    self._foodCount-=1;
+                    self._foodCount -= 1
                 elif objType == "nutrient":
                     self.healthUp(playerId, self._rand.rand() % 301 + 200)
                     self._players[playerId].ability += self._rand.rand() % 5 + 1
@@ -225,7 +229,8 @@ class GameMain:
                     continue
                 objType = self._objects[objId].type
                 if objType == "spike":
-                    if self._players[playerId].shieldTime == 0 or (self._players[playerId].skills["shield"] < 5 and self._players[playerId].shieldLevel<5):
+                    if self._players[playerId].shieldTime == 0 or (
+                            self._players[playerId].skills["shield"] < 5 and self._players[playerId].shieldLevel < 5):
                         damage = self._players[playerId].health // 3
                         self.healthDown(playerId, damage)
                         self._objects.pop(objId)
@@ -243,44 +248,44 @@ class GameMain:
                 self._players.pop(objId)
                 self.gameEnd()
 
-        #判断是否有球体生命值小于历史最大值四分之一，有则死亡
+        # 判断是否有球体生命值小于历史最大值四分之一，有则死亡
         for playerId in self._players:
-            if playerId==0:
+            if playerId == 0:
                 continue
-            if self._players[playerId].health*4<self._players[playerId].maxhealth:
+            if self._players[playerId].health * 4 < self._players[playerId].maxHealth:
                 self.gameEnd()
 
-        # 4、随机产生新的食物等,暂且每回合10个食饵,每隔10-20回合刷新一个营养源;
+        # 4、随机产生新的食物等,暂且每回合10个食饵，且上限为1000个。每隔10-20回合刷新一个营养源;
         # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
         foodPerTick = 10
         for _ in range(foodPerTick):
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             food = scene.Sphere(center)
-            foodId = 1000000+self._foodCount
+            foodId = 1000000 + self._foodCount
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
-            self._foodCount+=1
-            self._changeList.append(self.makeChangeJson(foodId,-2,center,0))
-            if self._foodCount>1000:
+            self._foodCount += 1
+            self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
+            if self._foodCount > 1000:
                 break
 
         if self._nutrientFlushTime == 0:
             pos = self._rand.randIn(len(self._nutrientFlushPos))
-            nutrientId = int(2000000+pos)
-            time=0
+            nutrientId = int(2000000 + pos)
+            time = 0
             while self._objects.get(nutrientId) is not None:
                 pos = self._rand.randIn(len(self._nutrientFlushPos))
-                nutrientId = int(2000000+pos)
-                time+=1
-                if time>10 :
+                nutrientId = int(2000000 + pos)
+                time += 1
+                if time > 10:
                     break
-            if time<=10:
+            if time <= 10:
                 nutrient = scene.Sphere(self._nutrientFlushPos[pos])
                 self._objects[nutrientId] = ObjectStatus("nutrient")
                 self._scene.insert(nutrient, nutrientId)
                 self._nutrientFlushTime = self._rand.randIn(11) + 10
         else:
-           self._nutrientFlushTime -= 1
+            self._nutrientFlushTime -= 1
 
         # 5、时间+1
         # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
@@ -289,9 +294,9 @@ class GameMain:
             if self._players[playerId].shieldTime > 0:
                 self._players[playerId].shieldTime -= 1
             if self._players[playerId].shieldLevel > 0:
-                self._players[playerId].shieldLevel-=1
-            if self._players[playerId].stoptime > 0:
-                self._players[playerId].stoptime-=1
+                self._players[playerId].shieldLevel -= 1
+            if self._players[playerId].stopTime > 0:
+                self._players[playerId].stopTime -= 1
             for skillName in self._players[playerId].skillsCD.keys():
                 if self._players[playerId].skillsCD[skillName] > 0:
                     self._players[playerId].skillsCD[skillName] -= 1
@@ -299,7 +304,7 @@ class GameMain:
         for playerId in self._changedPlayer:
             self._changeList.append(self.makePlayerJson(playerId))
         # 调用回调函数，向平台传回变化信息
-        self._callback("["+",".join(self._changeList)+"]")
+        self._callback("[" + ",".join(self._changeList) + "]")
 
     # 生命下降，作用物体Id为objId, 受到伤害damage
     def healthDown(self, objId: int, damage):
@@ -333,12 +338,12 @@ class GameMain:
     # 物体移动，参数为物体Id, 物体速度speed，物体半径radius（用以判断移动是否合法）,是否为子弹isbullet（若子弹移动出界，则删除）
     def move(self, Id: int, tspeed: tuple, radius=0, isbullet=False):
         if (isbullet):
-            enemy=self._scene.getObject(self._objects[Id].enemy).center
-            bullet=self._scene.getObject(Id).center
-            length=self._objects[Id].speed/math.sqrt(bullet[0]**2+bullet[1]**2+bullet[2]**2)
-            speed=tuple(length*enemy[x] for x in range(3))
+            enemy = self._scene.getObject(self._objects[Id].enemy).center
+            bullet = self._scene.getObject(Id).center
+            length = self._objects[Id].speed / math.sqrt(bullet[0] ** 2 + bullet[1] ** 2 + bullet[2] ** 2)
+            speed = tuple(length * enemy[x] for x in range(3))
         else:
-            speed=tspeed
+            speed = tspeed
         x = self._scene.getObject(Id).center[0] + speed[0]
         y = self._scene.getObject(Id).center[1] + speed[1]
         z = self._scene.getObject(Id).center[2] + speed[2]
@@ -363,44 +368,52 @@ class GameMain:
             newSphere = scene.Sphere(pos, radius)
             self._scene.modify(newSphere, Id)
         if self._players.get(Id) is None:
-            aiId=-2
+            aiId = -2
         else:
-            aiId=self._players[Id].aiId
-        self._changeList.append(self.makeChangeJson(Id,-2,newSphere.center,newSphere.radius))
+            aiId = self._players[Id].aiId
+        self._changeList.append(self.makeChangeJson(Id, -2, newSphere.center, newSphere.radius))
 
     # 若playerId为-1则返回全局所有物体，否则只返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
         objectList = []
         changelist = []
         if aiId == -1:
-           for info in self._lastObjectist:
-                if info["type"]=="player":
+            for info in self._lastObjectist:
+                if info["type"] == "player":
                     sphere = self._scene.getObject(info["id"])
                     objectList.append({"id": info["id"], "type": "player", "pos": sphere.center, "r": sphere.radius})
-                    if sphere.center!=info["pos"] or sphere.radius!=info["r"] :
-                        changelist.append({"id": info["id"], "type": "player", "pos1": info["pos"], "r1":info["r"], "pos2": sphere.center, "r2": sphere.radius})
-                elif info["type"]=="spike" or info["type"]=="food" or info["type"]=="nutrient":
-                    if info["id"] in self._objects :
+                    if sphere.center != info["pos"] or sphere.radius != info["r"]:
+                        changelist.append({"id": info["id"], "type": "player", "pos1": info["pos"], "r1": info["r"],
+                                           "pos2": sphere.center, "r2": sphere.radius})
+                elif info["type"] == "spike" or info["type"] == "food" or info["type"] == "nutrient":
+                    if info["id"] in self._objects:
                         objectList.append(info)
                     else:
-                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": (-1,-1,-1), "r2": -1})
+                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1": info["r"],
+                                           "pos2": (-1, -1, -1), "r2": -1})
                 else:
-                    if info["id"] in self._objects :
+                    if info["id"] in self._objects:
                         sphere = self._scene.getObject(info["id"])
-                        objectList.append({"id": info["id"], "type": info["type"], "pos": sphere.center, "r": sphere.radius})
-                        if sphere.center!=info["pos"] or sphere.radius!=info["r"] :
-                             changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": sphere.center, "r2": sphere.radius})
+                        objectList.append(
+                            {"id": info["id"], "type": info["type"], "pos": sphere.center, "r": sphere.radius})
+                        if sphere.center != info["pos"] or sphere.radius != info["r"]:
+                            changelist.append(
+                                {"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1": info["r"],
+                                 "pos2": sphere.center, "r2": sphere.radius})
                     else:
-                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1":info["r"], "pos2": (-1,-1,-1), "r2": -1})
-           for objectId in self._objects:
-               status=self._objects[objectId]
-               if objectId not in self._lastobjects:
+                        changelist.append({"id": info["id"], "type": info["type"], "pos1": info["pos"], "r1": info["r"],
+                                           "pos2": (-1, -1, -1), "r2": -1})
+            for objectId in self._objects:
+                status = self._objects[objectId]
+                if objectId not in self._lastobjects:
                     sphere = self._scene.getObject(objectId)
                     objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
-                    changelist.append({"id": objectId, "type": status.type, "pos1":(-1,-1,-1),"r1":-1,"pos2": sphere.center, "r2":sphere.radius})
-           self._lastObjectist=objectList
-           self._lastobjects=self._objects
-           return json.dumps({"ai_id": aiId, "objects": changelist})
+                    changelist.append(
+                        {"id": objectId, "type": status.type, "pos1": (-1, -1, -1), "r1": -1, "pos2": sphere.center,
+                         "r2": sphere.radius})
+            self._lastObjectist = objectList
+            self._lastobjects = self._objects
+            return json.dumps({"ai_id": aiId, "objects": changelist})
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
@@ -435,9 +448,9 @@ class GameMain:
     def castSkill(self, playerId: int, skillName: str, **kw):
         if self._players[playerId].skills.get(skillName) is not None:
             if self._players[playerId].skillsCD[skillName] == 0:
-                if skillName=='teleport':
+                if skillName == 'teleport':
                     self._castSkills[playerId] = CastTeleportInfo(kw['dst'])
-                elif skillName=='longAttack':
+                elif skillName == 'longAttack':
                     self._castSkills[playerId] = CastLongAttackInfo(kw['player'])
                 else:
                     self._castSkills[playerId] = CastSkillInfo(skillName)
@@ -448,13 +461,13 @@ class GameMain:
         return tuple(x / velocity for x in self._players[playerId].speed)
 
     # 远程攻击，参数为使用者Id
-    def longAttack(self, playerId: int, enemy:int):
+    def longAttack(self, playerId: int, enemy: int):
         skillLevel = self._players[playerId].skills['longAttack']
         damage = 100 * skillLevel
-        stop=False
-        speed=50+50*skillLevel
-        if (skillLevel==5):
-            stop=True
+        stop = False
+        speed = 50 + 50 * skillLevel
+        if (skillLevel == 5):
+            stop = True
         # 发射速度是否这样处理？
         self.healthDown(playerId, 10)
         self._players[playerId].skillsCD['longAttack'] = 80
@@ -465,7 +478,7 @@ class GameMain:
             i += 1
         bulletID = int(str(playerId) + str(i))
         self._scene.insert(bullet, bulletID)
-        self._objects[bulletID] = BulletStatus(damage, enemy, speed, playerId,stop)
+        self._objects[bulletID] = BulletStatus(damage, enemy, speed, playerId, stop)
         self._changeList.append(self.makeSkillCastJson(playerId, 'longAttack', enemy, None))
 
     # 近程攻击，参数为使用者Id
@@ -483,8 +496,8 @@ class GameMain:
                 self.healthDown(objId, damage)
                 self._changeList.append(self.makeSkillHitJson('shortAttack', objId))
         if skillLevel == 5:
-            #self._players[playerId].shieldTime = 30
-            self._players[playerId].shieldLevel =34
+            # self._players[playerId].shieldTime = 30
+            self._players[playerId].shieldLevel = 34
 
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
@@ -497,17 +510,19 @@ class GameMain:
     def dis(self, pos1: tuple, pos2: tuple):
         return sum((pos1[i] - pos2[i]) ** 2 for i in range(3)) ** 0.5
 
-    #判断远程攻击是否可以命中
-    def longAttackbullet(self,bulletId:int):
-        if (self.dis(self._scene.getObject(bulletId).center,self._scene.getObject(self._objects[bulletId].enemy).center)<
-                    self._scene.getObject(self._objects[bulletId].enemy).radius+self._objects[bulletId].speed):
-            if self._players[self._objects[bulletId].enemy].shieldTime==0 and self._players[self._objects[bulletId].enemy].shieldLevel<5:
+    # 判断远程攻击是否可以命中
+    def longAttackbullet(self, bulletId: int):
+        if (self.dis(self._scene.getObject(bulletId).center,
+                     self._scene.getObject(self._objects[bulletId].enemy).center) <
+                    self._scene.getObject(self._objects[bulletId].enemy).radius + self._objects[bulletId].speed):
+            if self._players[self._objects[bulletId].enemy].shieldTime == 0 and self._players[
+                self._objects[bulletId].enemy].shieldLevel < 5:
                 self.healthDown(self._objects[bulletId].enemy, self._objects[bulletId].damage)
-            if (self._objects[bulletId].stop==True):
-                self._players[self._objects[bulletId].enemy].stoptime=30
+            if (self._objects[bulletId].stop == True):
+                self._players[self._objects[bulletId].enemy].stopTime = 30
             self._scene.delete(bulletId)
-            self._objects[bulletId].type="None"
-            #self._objects.pop(bulletId)
+            self._objects[bulletId].type = "None"
+            # self._objects.pop(bulletId)
             return True
         else:
             return False
@@ -524,18 +539,18 @@ class GameMain:
     # 瞬移，参数为使用者Id， 目标位置pos2
     def teleport(self, playerId: int, pos2: tuple):
         skillLevel = self._players[playerId].skills['teleport']
-        if self._players[playerId].skillsCD['teleport']!=0:
+        if self._players[playerId].skillsCD['teleport'] != 0:
             return
         sphere = self._scene.getObject(playerId)
         if self.outsideMap(pos2, sphere.radius):
             return
-        if skillLevel!=5:
+        if skillLevel != 5:
             if self.dis(sphere.center, pos2) > 9000 + 1000 * skillLevel:
                 return
         self._players[playerId].skillsCD['teleport'] = 100
-        newSphere = scene.Sphere(pos2,sphere.radius)
-        self._scene.modify(newSphere,playerId)
-        self._changeList.append(self.makeChangeJson(playerId,self._players[playerId].aiId,pos2,newSphere.radius))
+        newSphere = scene.Sphere(pos2, sphere.radius)
+        self._scene.modify(newSphere, playerId)
+        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos2, newSphere.radius))
 
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
@@ -566,10 +581,10 @@ class GameMain:
                 self._changedPlayer.add(playerId)
                 self._players[playerId].skills[skillName] += 1
                 self._players[playerId].ability -= price
-                if (skillName=="visionUp"):
+                if (skillName == "visionUp"):
                     self.visionUp(playerId)
-                if (skillName=="healthUp"):
-                    self.healthUp(playerId,2000)
+                if (skillName == "healthUp"):
+                    self.healthUp(playerId, 2000)
         elif self._players[playerId].skills.get(skillName) is None:
             price = self._skillPrice[skillName] * 2 ** len(self._players[playerId].skills)
             if self._players[playerId].ability >= price:
@@ -577,11 +592,11 @@ class GameMain:
                 self._players[playerId].skills[skillName] = 1
                 self._players[playerId].ability -= price
                 self._players[playerId].skillsCD[skillName] = 0
-                if (skillName=="visionUp"):
+                if (skillName == "visionUp"):
                     self.visionUp(playerId)
-                if (skillName=="healthUp"):
-                    self.healthUp(playerId,2000)
+                if (skillName == "healthUp"):
+                    self.healthUp(playerId, 2000)
 
     def gameEnd(self):
-        self._gameend=True
+        self._gameEnd = True
         self._changeList.append('{"info":"end","time":%d,"ai_id":%d}' % (self._time, -2))

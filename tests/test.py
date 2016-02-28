@@ -198,11 +198,11 @@ class GameMaintest(unittest.TestCase):
     def testteleport(self):
         self.player2.ability = 100
         self.game.upgradeSkill(2,"teleport")
-        self.temp=self.game.playerpos(2)
+        self.temp=self.game.playerPos(2)
         self.game.castSkill(2,"teleport",dst=(10010, 10010, 10010))
-        self.assertTrue(self.game.playerpos(2)==self.temp,"move too fast")
+        self.assertTrue(self.game.playerPos(2)==self.temp,"move too fast")
         self.game.update()
-        self.assertEqual(self.game.playerpos(2),(10010,10010,10010),"teleport wrong")
+        self.assertEqual(self.game.playerPos(2),(10010,10010,10010),"teleport wrong")
 
     def testlongAttack(self):
         self.player2.ability = 100

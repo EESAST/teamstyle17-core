@@ -1,7 +1,8 @@
 import copy
 
+
 class Sphere:
-    def __init__(self, center:tuple=(0, 0, 0), r:int=0):
+    def __init__(self, center: tuple = (0, 0, 0), r: int = 0):
         self.center = center
         self.radius = r
 
@@ -162,8 +163,8 @@ class Octree:
         if self._objs.get(objId) is None:
             raise ValueError
         self._root.delete(objId, self._paths[objId])
-        self._objs[objId]=copy.copy(obj)
-        self._paths[objId]=""
+        self._objs[objId] = copy.copy(obj)
+        self._paths[objId] = ""
         self._root.insert(objId, self)
 
     # 删除ID为objId的物体
