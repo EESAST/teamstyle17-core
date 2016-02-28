@@ -59,19 +59,19 @@ class CastSkillInfo():
 
 
 class CastTeleportInfo():
-    def __init__(self, tdst):
+    def __init__(self, tDst):
         self.name = "teleport"
-        self.dst = tdst
+        self.dst = tDst
 
 
 class CastLongAttackInfo():
-    def __init__(self, tplayer):
+    def __init__(self, tPlayer):
         self.name = "longAttack"
-        self.player = tplayer
+        self.player = tPlayer
 
 
 class GameMain:
-    def __init__(self, seed, player_num, callback):
+    def __init__(self, seed, playerNum, callback):
         # 游戏结束标志
         self._gameEnd = False
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
@@ -110,29 +110,29 @@ class GameMain:
         self.addNewPlayer(2, pos2, 10)
 
     # player位置获取
-    def playerPos(self, ID):
-        return self._scene.getObject(ID).center
+    def playerPos(self, playerId):
+        return self._scene.getObject(playerId).center
 
     # 添加新玩家
-    def addNewPlayer(self, playerID: int, pos: tuple, radius: int):
+    def addNewPlayer(self, playerId: int, pos: tuple, radius: int):
         player = scene.Sphere(pos, radius)
-        self._scene.insert(player, playerID)
+        self._scene.insert(player, playerId)
         newStatus = PlayerStatus()
         newStatus.health = radius ** 3
-        self._players[playerID] = newStatus
+        self._players[playerId] = newStatus
 
-    def makeChangeJson(self, id: int, ai_id: int, pos: tuple, r: int):
-        if self._objects.get(id) is not None:
-            objType = self._objects[id].type
-        elif self._players.get(id) is not None:
+    def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int):
+        if self._objects.get(playerId) is not None:
+            objType = self._objects[playerId].type
+        elif self._players.get(playerId) is not None:
             objType = "player"
         else:
             objType = None
         return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":%s,"pos":[%d,%d,%d],"r":%d}' \
-               % (self._time, id, ai_id, objType, pos[0], pos[1], pos[2], r)
+               % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r)
 
-    def makeDeleteJson(self, id: int):
-        return '{"info":"delete","time":%d,"id":%d}' % (self._time, id)
+    def makeDeleteJson(self, playerId: int):
+        return '{"info":"delete","time":%d,"id":%d}' % (self._time, playerId)
 
     # 若target为None则没有目标物体，pos为None则没有目标坐标
     def makeSkillCastJson(self, source: int, skillType: str, target, pos):
@@ -208,7 +208,7 @@ class GameMain:
                 eatenPlayer = self._players.get(objId)
                 if eatenPlayer is not None:
                     if eatenPlayer.shieldTime == 0 or (
-                            eatenPlayer.skills["shield"] < 4 and eatenPlayer.shiledLevel < 4):
+                                    eatenPlayer.skills["shield"] < 4 and eatenPlayer.shiledLevel < 4):
                         self.healthUp(playerId, eatenPlayer.health)
                         self.gameEnd()
                     continue
@@ -231,7 +231,8 @@ class GameMain:
                 objType = self._objects[objId].type
                 if objType == "spike":
                     if self._players[playerId].shieldTime == 0 or (
-                            self._players[playerId].skills["shield"] < 5 and self._players[playerId].shieldLevel < 5):
+                                    self._players[playerId].skills["shield"] < 5 and self._players[
+                                playerId].shieldLevel < 5):
                         damage = self._players[playerId].health // 3
                         self.healthDown(playerId, damage)
                         self._objects.pop(objId)

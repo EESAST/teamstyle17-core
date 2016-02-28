@@ -155,7 +155,7 @@ class GameMainTest(unittest.TestCase):
         self.assertTrue(self.player1.health >= now + 1000)
         self.assertTrue(self.game._gameEnd)
 
-    def testshield_level4(self):
+    def testShieldLevel4(self):
         self.player2.ability = 100
         for x in range(4):
             self.game.upgradeSkill(2, "shield")
@@ -183,7 +183,7 @@ class GameMainTest(unittest.TestCase):
         self.assertTrue(self.player1.health >= now + now1)
         self.assertTrue(self.game._gameEnd)
 
-    def tsetshortattack(self):
+    def testShortAttack(self):
         self.player2.speed = (50, 50, 50)
         self.game.update()
         self.player2.speed = (0, 0, 0)
@@ -192,9 +192,9 @@ class GameMainTest(unittest.TestCase):
         self.assertTrue(self.player2.health >= 1000, "shortAttack to fast")
         self.game.update()
         self.assertTrue(self.player1.health < 331 + 100, "shortAttack is wrong")
-        self.assertTrue(self.player2.health < 1000, "shortAtack without cost")
+        self.assertTrue(self.player2.health < 1000, "shortAttack without cost")
 
-    def testteleport(self):
+    def testTeleport(self):
         self.player2.ability = 100
         self.game.upgradeSkill(2, "teleport")
         self.temp = self.game.playerPos(2)
@@ -203,7 +203,7 @@ class GameMainTest(unittest.TestCase):
         self.game.update()
         self.assertEqual(self.game.playerPos(2), (10010, 10010, 10010), "teleport wrong")
 
-    def testlongAttack(self):
+    def testLongAttack(self):
         self.player2.ability = 100
         self.game.upgradeSkill(2, "longAttack")
         self.game.castSkill(2, "longAttack", player=1)
