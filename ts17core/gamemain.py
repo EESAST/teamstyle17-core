@@ -379,14 +379,14 @@ class GameMain:
     def getFieldJson(self, aiId: int):
         objectList = []
         if aiId == -1:
-			for playerId in self._players:
-				sphere = self._scene.getObject(playerId)
+            for playerId in self._players:
+                sphere =self._scene.getObject(playerId)
                 objectList.append({"id": playerId, "type": "player", "pos": sphere.center, "r": sphere.radius})
             for objectId in self._objects:
-				status=self._objects[objectId]
-				sphere=self._scene.getObject(objectId)
-				objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
-			return json.dumps({"ai_id": aiId, "objects": changelist})
+                status=self._objects[objectId]
+                sphere=self._scene.getObject(objectId)
+                objectList.append({"id": objectId, "type": status.type, "pos": sphere.center, "r": sphere.radius})
+            return json.dumps({"ai_id": aiId, "objects": objectList})
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
