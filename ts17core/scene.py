@@ -25,6 +25,9 @@ class Octree:
         def center(self):
             return tuple((self.smallCorner[i] + self.bigCorner[i]) / 2 for i in range(3))
 
+        def sideLength(self):
+            return self.bigCorner[0] - self.smallCorner[0]
+
         def _makeChildren(self):
             center = self.center()
             self.children = []
@@ -97,39 +100,15 @@ class Octree:
             def intersectWithSphere(obj1: Sphere, obj2: Sphere) -> bool:
                 return norm(vec(obj1.center, obj2.center)) < obj1.radius + obj2.radius
 
-            # 非常蛋疼，没有信心，求计算几何高手帮忙debug
             def intersectWithBox(obj: Sphere, small: tuple, big: tuple) -> bool:
-                # 球心在正方体内显然可直接返回True
-                if all(small[i] < obj.center[i] < big[i] for i in range(3)):
-                    return True
-                # 先判断正方体8个顶点是否有在球内的
-                for i in range(0, 8):
-                    corner = tuple(small[j] if i & (2 ** j) == 0 else big[j] for j in range(3))
-                    if insideSphere(obj, corner):
-                        return True
-                # 若没有，则检查正方体的12条边是否有和球相交的
-                for i1, i2 in [(0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3),
-                               (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7)]:
-                    endpoint1 = tuple(small[j] if i1 & (2 ** j) == 0 else big[j] for j in range(3))
-                    endpoint2 = tuple(small[j] if i2 & (2 ** j) == 0 else big[j] for j in range(3))
-                    # 判断条件的含义为：圆心到线段所在直线的距离小于半径，且圆心与线段两端点连线与线段的有向角一锐一钝
-                    # 按照计算几何惯例，全部用空间向量运算
-                    if norm(cross(vec(obj.center, endpoint1), vec(obj.center, endpoint2))) \
-                            / norm(vec(endpoint1, endpoint2)) < obj.radius \
-                            and ((dot(vec(endpoint1, obj.center), vec(endpoint1, endpoint2)) > 0)
-                                     ^ (dot(vec(endpoint2, obj.center), vec(endpoint2, endpoint1)) > 0)):
-                        return True
-                # 若没有，则检查正方体的6个面是否有和球相交的
-                for i in range(0, 6):
-                    upper = [1e10 if i // 2 == j else big[j] for j in range(3)]
-                    lower = [-1e10 if i // 2 == j else small[j] for j in range(3)]
-                    unitNorm = tuple(1 if i // 2 == j else 0 for j in range(3))
-                    corner = small if i % 2 == 0 else big
-                    # 判断条件的含义为：圆心到面的投影在面内，且圆心到面的距离小于圆的半径
-                    if sum(lower[j] < obj.center[j] < upper[j] for j in range(3)) == 3 \
-                            and abs(dot(unitNorm, vec(obj.center, corner))) < obj.radius:
-                        return True
-                return False
+                # 使用这里的算法 http://stackoverflow.com/questions/4578967/cube-sphere-intersection-test
+                dist2 = obj.radius ** 2
+                for i in range(3):
+                    if obj.center[i] < small[i]:
+                        dist2 -= (obj.center[i] - small[i]) ** 2
+                    elif obj.center[i] > big[i]:
+                        dist2 -= (big[i] - obj.center[i]) ** 2
+                return dist2 > 0
 
             ans = list(
                 filter((lambda objId: insideSphere(obj, tree._objs[objId].center)) if centerOnly \

@@ -36,7 +36,7 @@ class OctreeTest(unittest.TestCase):
         self.tree.delete(0)
         self.assertEqual(self.tree.intersect(sp3, False), [1])
 
-    def testAgain(self):
+    def testAgainstNaiveImpl(self):
         number = 100
         sqr = lambda x: x * x
         rand = myrand.MyRand()
@@ -65,27 +65,27 @@ class OctreeTest(unittest.TestCase):
             self.assertEqual(treeResult, temp)
 
 
-class GameMaintest(unittest.TestCase):
+class GameMainTest(unittest.TestCase):
     def setUp(self):
-        self.game = gamemain.GameMain(0)
-        self.game.addNewPlayer(0,(100,100,100),20)
-        self.game.addNewPlayer(1,(10100,10100,10100),30)
-        self.game.addNewPlayer(2,(10000,10000,10000),10)
-        self.player1=self.game._players[1]
-        self.player2=self.game._players[2]
+        self.game = gamemain.GameMain(0, 2, lambda _: None)
+        self.game.addNewPlayer(0, (100, 100, 100), 20)
+        self.game.addNewPlayer(1, (10100, 10100, 10100), 30)
+        self.game.addNewPlayer(2, (10000, 10000, 10000), 10)
+        self.player1 = self.game._players[1]
+        self.player2 = self.game._players[2]
 
     def testMove(self):
-        self.player2.speed = (10,0,0)
+        self.player2.speed = (10, 0, 0)
         self.game.update()
         self.assertEqual(self.game._scene.getObject(2).center, (10010, 10000, 10000))
 
     def testSkillShop(self):
         self.game.upgradeSkill(2, "longAttack")
-        self.assertEqual(self.player2.ability,0, "money is not enough")
+        self.assertEqual(self.player2.ability, 0, "money is not enough")
         self.assertEqual(self.player2.skills, {})
         self.player2.ability = 1
         self.game.upgradeSkill(2, "shield")
-        self.assertEqual(self.player2.ability,1, "money is not enough")
+        self.assertEqual(self.player2.ability, 1, "money is not enough")
         self.assertEqual(self.player2.skills, {})
         self.player2.ability = 10000
         for x in range(5):
@@ -109,7 +109,7 @@ class GameMaintest(unittest.TestCase):
             self.assertEqual(self.player2.ability, 9793 - 2 ** (x + 2) - 28, "ability is wrong")
             self.assertEqual(self.player2.skills,
                              {"shortAttack": 5, "longAttack": 5, "shield": 5, "teleport": 5, "visionUp": x + 1})
-            self.assertEqual(self.player2.vision, 1000 + 500 * (x+1))
+            self.assertEqual(self.player2.vision, 1000 + 500 * (x + 1))
         for x in range(5):
             self.game.upgradeSkill(2, "healthUp")
             self.assertEqual(self.player2.ability, 9701 - 2 ** (x + 1) - 30, "ability is wrong")
@@ -153,7 +153,7 @@ class GameMaintest(unittest.TestCase):
         self.game.update()
         self.assertTrue(self.player1.health < now + 1100)
         self.assertTrue(self.player1.health >= now + 1000)
-        self.assertTrue(self.game._gameend)
+        self.assertTrue(self.game._gameEnd)
 
     def testshield_level4(self):
         self.player2.ability = 100
@@ -181,40 +181,38 @@ class GameMaintest(unittest.TestCase):
         self.game.update()
         self.assertTrue(self.player1.health < now + 1100)
         self.assertTrue(self.player1.health >= now + now1)
-        self.assertTrue(self.game._gameend)
-
+        self.assertTrue(self.game._gameEnd)
 
     def tsetshortattack(self):
-        self.player2.speed=(50,50,50);
-        self.update();
-        self.player2.speed=(0,0,0);
+        self.player2.speed = (50, 50, 50)
+        self.game.update()
+        self.player2.speed = (0, 0, 0)
         self.game.upgradeSkill(2, "shortAttack")
         self.game.castSkill(2, "shortAttack")
-        self.assertTrue(self.player2.health>=1000,"shortAttack to fast")
-        self.update()
-        self.assertTrue(self.player1.health<331+100,"shortAttack is wrong")
-        self.assertTrue(self.player2.health<1000,"shortAtack without cost")
+        self.assertTrue(self.player2.health >= 1000, "shortAttack to fast")
+        self.game.update()
+        self.assertTrue(self.player1.health < 331 + 100, "shortAttack is wrong")
+        self.assertTrue(self.player2.health < 1000, "shortAtack without cost")
 
     def testteleport(self):
         self.player2.ability = 100
-        self.game.upgradeSkill(2,"teleport")
-        self.temp=self.game.playerPos(2)
-        self.game.castSkill(2,"teleport",dst=(10010, 10010, 10010))
-        self.assertTrue(self.game.playerPos(2)==self.temp,"move too fast")
+        self.game.upgradeSkill(2, "teleport")
+        self.temp = self.game.playerPos(2)
+        self.game.castSkill(2, "teleport", dst=(10010, 10010, 10010))
+        self.assertTrue(self.game.playerPos(2) == self.temp, "move too fast")
         self.game.update()
-        self.assertEqual(self.game.playerPos(2),(10010,10010,10010),"teleport wrong")
+        self.assertEqual(self.game.playerPos(2), (10010, 10010, 10010), "teleport wrong")
 
     def testlongAttack(self):
         self.player2.ability = 100
-        self.game.upgradeSkill(2,"longAttack")
-        self.game.castSkill(2,"longAttack",player=1)
-        self.assertTrue(self.player2.health==1000,"longAttack to fast")
+        self.game.upgradeSkill(2, "longAttack")
+        self.game.castSkill(2, "longAttack", player=1)
+        self.assertTrue(self.player2.health == 1000, "longAttack to fast")
         self.game.update()
-        self.assertEqual(self.player2.health,990,"no longAttack")
-        self.assertTrue(self.player1.health>=2197,"longAttack speed is wrong")
-        temp=self.player1.health
+        self.assertEqual(self.player2.health, 990, "no longAttack")
+        self.assertTrue(self.player1.health >= 2197, "longAttack speed is wrong")
+        temp = self.player1.health
         self.assertTrue(20 in self.game._objects)
         self.game.update()
-        self.assertTrue(self.game._objects[20].type=="None")
-        self.assertTrue(self.player1.health==temp-100,"longAttack is wrong")
-
+        self.assertTrue(self.game._objects[20].type == "None")
+        self.assertTrue(self.player1.health == temp - 100, "longAttack is wrong")
