@@ -1,4 +1,5 @@
 import json
+import copy
 from ts17core import gamemain
 
 
@@ -33,3 +34,10 @@ class Interface:
     def nextTick(self):
         self.game.update()
         return self.game.getFieldJson(-1)
+
+    def getGameObject(self):
+        return copy.copy(self.game)
+
+    def setGameObject(self, gameObject):
+        self.game=gameObject
+        self.game._callback=self.callback
