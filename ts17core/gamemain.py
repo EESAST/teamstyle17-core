@@ -1,5 +1,4 @@
 import math
-
 from ts17core import scene, myrand
 
 
@@ -305,7 +304,7 @@ class GameMain:
     def healthChange(self, playerId: int, delta: int):
         player = self._players.get(playerId)
         if player is None:
-            raise ValueError('Player ID does not exist')
+            raise ValueError('Player %d does not exist' % playerId)
         player = self._players[playerId]
         oldHealth = player.health
         player.healthChange(delta)
@@ -322,13 +321,13 @@ class GameMain:
     def playerDie(self, playerId: int):
         player = self._players.get(playerId)
         if player is None:
-            raise ValueError('Player ID does not exist')
+            raise ValueError('Player %d does not exist' % playerId)
         if player.health > 0:
             raise ValueError('This player is still alive')
         self._players.pop(playerId)
         self._scene.delete(playerId)
         self._changeList.append(self.makeDeleteJson(playerId))
-        # 判断游戏是否已结束
+        # 判断是否只有一个AI有玩家存活，是则游戏结束，该AI获胜
         aliveAI = set()
         for player in self._players.values():
             if player.aiId >= 0:
@@ -340,48 +339,54 @@ class GameMain:
     def objectDelete(self, objId: int):
         obj = self._objects.get(objId)
         if obj is None:
-            raise ValueError('Object ID does not exist')
+            raise ValueError('Object %d does not exist' % objId)
         self._objects.pop(objId)
         self._scene.delete(objId)
         self._changeList.append(self.makeDeleteJson(objId))
 
     # 物体移动，参数为物体Id, 物体速度speed，物体半径radius（用以判断移动是否合法）,是否为子弹isBullet（若子弹移动出界，则删除）
-    def move(self, Id: int, tSpeed: tuple, radius=0, isBullet=False):
+    def move(self, objId: int, tSpeed: tuple, radius=0, isBullet=False):
         if (isBullet):
-            enemy = self._scene.getObject(self._objects[Id].enemy).center
-            bullet = self._scene.getObject(Id).center
-            length = self._objects[Id].speed / math.sqrt(bullet[0] ** 2 + bullet[1] ** 2 + bullet[2] ** 2)
+            enemy = self._scene.getObject(self._objects[objId].enemy).center
+            bullet = self._scene.getObject(objId).center
+            length = self._objects[objId].speed / math.sqrt(bullet[0] ** 2 + bullet[1] ** 2 + bullet[2] ** 2)
             speed = tuple(length * enemy[x] for x in range(3))
         else:
             speed = tSpeed
-        x = self._scene.getObject(Id).center[0] + speed[0]
-        y = self._scene.getObject(Id).center[1] + speed[1]
-        z = self._scene.getObject(Id).center[2] + speed[2]
+        x = self._scene.getObject(objId).center[0] + speed[0]
+        y = self._scene.getObject(objId).center[1] + speed[1]
+        z = self._scene.getObject(objId).center[2] + speed[2]
         pos = (x, y, z)
         if self.outsideMap(pos, radius):
             if isBullet:
-                self._objects.pop(Id)
-                self._scene.delete(Id)
+                self._objects.pop(objId)
+                self._scene.delete(objId)
             else:
-                vx = self._players[Id].speed[0]
-                vy = self._players[Id].speed[1]
-                vz = self._players[Id].speed[2]
+                vx = self._players[objId].speed[0]
+                vy = self._players[objId].speed[1]
+                vz = self._players[objId].speed[2]
                 if x + radius > self._mapSize or x - radius < 0:
                     vx = 0
                 if y + radius > self._mapSize or y - radius < 0:
                     vy = 0
                 if z + radius > self._mapSize or z - radius < 0:
                     vz = 0
-                self._players[Id].speed = (vx, vy, vz)
+                self._players[objId].speed = (vx, vy, vz)
             return
         else:
             newSphere = scene.Sphere(pos, radius)
-            self._scene.modify(newSphere, Id)
-        if self._players.get(Id) is None:
+            self._scene.modify(newSphere, objId)
+        if self._players.get(objId) is None:
             aiId = -2
         else:
-            aiId = self._players[Id].aiId
-        self._changeList.append(self.makeChangeJson(Id, -2, newSphere.center, newSphere.radius))
+            aiId = self._players[objId].aiId
+        self._changeList.append(self.makeChangeJson(objId, -2, newSphere.center, newSphere.radius))
+
+    def isBelong(self, playerId: int, aiId: int):
+        player = self._players.get(playerId)
+        if player is None:
+            raise ValueError('Player %d does not exist' % playerId)
+        return player.aiId == aiId
 
     # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
@@ -421,7 +426,7 @@ class GameMain:
             infoList.append(info)
         return '{"players":[%s]}' % ','.join(infoList)
 
-    def setVelocity(self, playerId: int, newSpeed: tuple):
+    def setSpeed(self, playerId: int, newSpeed: tuple):
         speedLimit = 100
         newSpeedLength = sum(x ** 2 for x in newSpeed) ** 0.5
         if newSpeedLength > speedLimit:

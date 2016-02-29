@@ -10,33 +10,39 @@ class Interface:
 
     def setInstruction(self, instruction: str):
         command = json.loads(instruction)
+        if not self.game.isBelong(command["id"], command["ai_id"]):
+            raise ValueError('Player %d does not belong to AI %d' % (command["id"], command["ai_id"]))
         if command["action"] == "init":
-            self.game = gamemain.GameMain(command["seed"],command["player"],self.callback)
-        if command["action"] == "move":
-            self.game.setVelocity(command["ai_id"], (command["x"], command["y"], command["z"]))
-        if command["action"] == "use_skill":
-            if command["skill_type"]=="teleport":
-                self.game.castSkill(command["ai_id"], "teleport", dst=(command["x"],command["y"],command["z"]))
-            elif command["skill_type"]=="longAttack":
-                self.game.castSkill(command["ai_id"],"longAttack",player=command["target"])
+            self.game = gamemain.GameMain(command["seed"], command["player"], self.callback)
+        elif command["action"] == "move":
+            self.game.setSpeed(command["id"], (command["x"], command["y"], command["z"]))
+        elif command["action"] == "use_skill":
+            if command["skill_type"] == "teleport":
+                self.game.castSkill(command["id"], "teleport", dst=(command["x"], command["y"], command["z"]))
+            elif command["skill_type"] == "longAttack":
+                self.game.castSkill(command["id"], "longAttack", player=command["target"])
             else:
-                self.game.castSkill(command["ai_id"], command["skill_type"])
-        if command["action"] == "upgrade_skill":
-            self.game.upgradeSkill(command["ai_id"], command["skill_type"])
+                self.game.castSkill(command["id"], command["skill_type"])
+        elif command["action"] == "upgrade_skill":
+            self.game.upgradeSkill(command["id"], command["skill_type"])
+        else:
+            raise ValueError('No such action: %s' % command["action"])
 
     def getInstruction(self, instruction: str):
         command = json.loads(instruction)
         if command["action"] == "query_map":
             return self.game.getFieldJson(command["ai_id"])
-        if command["action"] == "query_status":
+        elif command["action"] == "query_status":
             return self.game.getStatusJson()
+        else:
+            raise ValueError('No such action: %s' % command["action"])
 
     def nextTick(self):
         self.game.update()
 
     def getGameObject(self):
-        return copy.copy(self.game)
+        return copy.deepcopy(self.game)
 
     def setGameObject(self, gameObject):
-        self.game=gameObject
-        self.game._callback=self.callback
+        self.game = gameObject
+        self.game._callback = self.callback
