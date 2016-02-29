@@ -115,10 +115,10 @@ class GameMain:
 
     # 添加新玩家
     def addNewPlayer(self, playerId: int, pos: tuple, radius: int):
-        player = scene.Sphere(pos, radius)
-        self._scene.insert(player, playerId)
+        sphere = scene.Sphere(pos, radius)
+        self._scene.insert(sphere, playerId)
         newStatus = PlayerStatus()
-        newStatus.health = int(radius / 100 ** 3)
+        newStatus.health = int((radius / 100) ** 3)
         self._players[playerId] = newStatus
 
     def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int):
@@ -305,17 +305,15 @@ class GameMain:
         player = self._players.get(playerId)
         if player is None:
             raise ValueError('Player %d does not exist' % playerId)
-        player = self._players[playerId]
-        oldHealth = player.health
         player.healthChange(delta)
         newHealth = player.health
         if newHealth <= 0:
             self.playerDie(playerId)
-            return
-        newRadius = self._scene.getObject(playerId).radius * (newHealth / oldHealth) ** (1 / 3)
-        newSphere = scene.Sphere(self._scene.getObject(playerId).center, newRadius)
-        self._scene.modify(newSphere, playerId)
-        self._changedPlayer.add(playerId)
+        else:
+            newRadius = newHealth ** (1 / 3)
+            newSphere = scene.Sphere(self._scene.getObject(playerId).center, newRadius)
+            self._scene.modify(newSphere, playerId)
+            self._changedPlayer.add(playerId)
 
     # 判断玩家生命小于0后即应调用该函数，由该函数负责所有后续处理工作
     def playerDie(self, playerId: int):
