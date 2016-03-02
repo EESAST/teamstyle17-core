@@ -391,18 +391,18 @@ class GameMain:
     # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
         def makeObjectJson(objId, objType, pos, r):
-            return '{"id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
+            return '{"id":%d,"adId":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
                    % (objId, objType, pos[0], pos[1], pos[2], r)
 
         objectList = []
         if aiId == -1:
             for playerId in self._players:
                 sphere = self._scene.getObject(playerId)
-                objectList.append(makeObjectJson(playerId, "player", sphere.center, sphere.radius))
+                objectList.append(makeObjectJson(playerId,self._players[playerId].aiId, "player", sphere.center, sphere.radius))
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
-                objectList.append(makeObjectJson(objectId, status.type, sphere.center, sphere.radius))
+                objectList.append(makeObjectJson(objectId,-2, status.type, sphere.center, sphere.radius))
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
@@ -410,9 +410,10 @@ class GameMain:
                 sphere = self._scene._objs[objectId]
                 if self._players.get(objectId) is not None:
                     objType = "player"
+                    objectList.append(makeObjectJson(objectId,self._players[objectId].aiId, objType, sphere.center, sphere.radius))
                 else:
                     objType = self._objects.get(objectId).type
-                objectList.append(makeObjectJson(objectId, objType, sphere.center, sphere.radius))
+                    objectList.append(makeObjectJson(objectId,-2, objType, sphere.center, sphere.radius))
         return '{"ai_id":%d,"objects":[%s]}' % (aiId, ','.join(objectList))
 
     def getStatusJson(self):
