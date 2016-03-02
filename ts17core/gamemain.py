@@ -103,22 +103,23 @@ class GameMain:
         # 记录发生变化的玩家集合，在更新结束时发送这些玩家的变化
         self._changedPlayer = set()
         # 增加玩家
-        self.addNewPlayer(0, tuple(self._mapSize // 2 for _ in range(3)), 2000)
+        self.addNewPlayer(0, -2,tuple(self._mapSize // 2 for _ in range(3)), 2000)
         pos1 = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
         pos2 = tuple(self._mapSize - pos1[x] for x in range(3))
-        self.addNewPlayer(1, pos1, 1000)
-        self.addNewPlayer(2, pos2, 1000)
+        self.addNewPlayer(1, 0,pos1, 1000)
+        self.addNewPlayer(2, 1,pos2, 1000)
 
     # player位置获取
     def playerPos(self, playerId):
         return self._scene.getObject(playerId).center
 
     # 添加新玩家
-    def addNewPlayer(self, playerId: int, pos: tuple, radius: int):
+    def addNewPlayer(self, playerId: int, aiId:int,pos: tuple, radius: int):
         sphere = scene.Sphere(pos, radius)
         self._scene.insert(sphere, playerId)
         newStatus = PlayerStatus()
         newStatus.health = int((radius / 100) ** 3)
+        newStatus.aiId=aiId
         self._players[playerId] = newStatus
 
     def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int):
