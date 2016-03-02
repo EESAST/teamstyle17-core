@@ -209,8 +209,8 @@ class GameMain:
                 if eatenPlayer is not None:
                     if eatenPlayer.shieldTime == 0 or (
                                     eatenPlayer.skills["shield"] < 4 and eatenPlayer.shiledLevel < 4):
-                        self.healthChange(playerId, eatenPlayer.health // 2)
-                        self.playerDie(eatenId)
+                        self.healthChange(playerId, eatenPlayer.health // 2)
+                        self.playerDie(eatenId,playerId)
                         if eatenId == 0:
                             self.gameEnd(playerId)
                     continue
@@ -246,7 +246,7 @@ class GameMain:
                     continue
                 elif self._players.get(eatenId) is not None:
                     self.healthChange(0, self._players[eatenId].health // 2)
-                    self.playerDie(eatenId)
+                    self.playerDie(eatenId, 0)
 
         # 4、随机产生新的食物等,暂且每回合1个食饵，且上限为1000个。每隔10-20回合刷新一个营养源;
         # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
@@ -316,11 +316,17 @@ class GameMain:
             self._changedPlayer.add(playerId)
 
     # 判断玩家生命小于0后即应调用该函数，由该函数负责所有后续处理工作
-    def playerDie(self, playerId: int):
+    def playerDie(self, playerId: int, eatenBy = None):
         player = self._players.get(playerId)
         if player is None:
             raise ValueError('Player %d does not exist' % playerId)
-        if player.health > 0:
+        # 如果死亡的是目标生物而且是被吃掉的，那么吃掉者赢得比赛
+        if eatenBy is not None and playerId == 0:
+            eater = self._players.get(eatenBy)
+            if eater is None:
+                raise ValueError('Player %d does not exist' % playerId)
+            self.gameEnd(eater.aiId)
+        elif player.health > 0:
             raise ValueError('This player is still alive')
         self._players.pop(playerId)
         self._scene.delete(playerId)
