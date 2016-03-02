@@ -212,7 +212,7 @@ class GameMain:
                 if eatenPlayer is not None:
                     if eatenPlayer.shieldTime == 0 or (
                                     eatenPlayer.skills["shield"] < 4 and eatenPlayer.shiledLevel < 4):
-                        self.healthChange(playerId, eatenPlayer.health // 2)
+                        self.healthChange(playerId, eatenPlayer.health // 2)
                         self.playerDie(eatenId,playerId)
                         if eatenId == 0:
                             self.gameEnd(playerId)
