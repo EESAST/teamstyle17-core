@@ -13,7 +13,7 @@ class PlayerStatus:
         # 能力值，购买技能用
         self.ability = 0
         # 视野半径
-        self.vision = 0
+        self.vision = 5000
         # 技能列表，应以“技能名:技能等级”形式保存
         self.skills = {}
         # 技能冷却时间，以“技能名：剩余冷却时间”保存,每回合结束后-1
@@ -94,6 +94,7 @@ class GameMain:
         self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'teleport': 2, 'visionUp': 2, 'healthUp': 1}
         # 食物编号
         self._foodCount = 0
+        self._foodCountAll = 0
         # 营养源刷新剩余时间
         self._nutrientFlushTime = 0
         # 营养源刷新位置
@@ -103,22 +104,24 @@ class GameMain:
         # 记录发生变化的玩家集合，在更新结束时发送这些玩家的变化
         self._changedPlayer = set()
         # 增加玩家
-        self.addNewPlayer(0, tuple(self._mapSize // 2 for _ in range(3)), 2000)
+        self.addNewPlayer(0, -2,tuple(self._mapSize // 2 for _ in range(3)), 2000)
         pos1 = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
         pos2 = tuple(self._mapSize - pos1[x] for x in range(3))
-        self.addNewPlayer(1, pos1, 1000)
-        self.addNewPlayer(2, pos2, 1000)
+        self.addNewPlayer(1, 0,pos1, 1000)
+        self.addNewPlayer(2, 1,pos2, 1000)
 
     # player位置获取
     def playerPos(self, playerId):
         return self._scene.getObject(playerId).center
 
     # 添加新玩家
-    def addNewPlayer(self, playerId: int, pos: tuple, radius: int):
+    def addNewPlayer(self, playerId: int, aiId:int,pos: tuple, radius: int):
         sphere = scene.Sphere(pos, radius)
         self._scene.insert(sphere, playerId)
         newStatus = PlayerStatus()
         newStatus.health = int((radius / 100) ** 3)
+        newStatus.maxHealth=newStatus.health
+        newStatus.aiId=aiId
         self._players[playerId] = newStatus
 
     def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int):
@@ -254,9 +257,10 @@ class GameMain:
         for _ in range(foodPerTick):
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             food = scene.Sphere(center)
-            foodId = 1000000 + self._foodCount
+            foodId = 1000000 + self._foodCountAll
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
+            self._foodCountAll +=1
             self._foodCount += 1
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
             if self._foodCount > 1000:
@@ -394,19 +398,19 @@ class GameMain:
 
     # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
-        def makeObjectJson(objId, objType, pos, r):
-            return '{"id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
-                   % (objId, objType, pos[0], pos[1], pos[2], r)
+        def makeObjectJson(objId,aiId, objType, pos, r):
+            return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
+                   % (objId, aiId,objType, pos[0], pos[1], pos[2], r)
 
         objectList = []
         if aiId == -1:
             for playerId in self._players:
                 sphere = self._scene.getObject(playerId)
-                objectList.append(makeObjectJson(playerId, "player", sphere.center, sphere.radius))
+                objectList.append(makeObjectJson(playerId,self._players[playerId].aiId, "player", sphere.center, sphere.radius))
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
-                objectList.append(makeObjectJson(objectId, status.type, sphere.center, sphere.radius))
+                objectList.append(makeObjectJson(objectId,-2, status.type, sphere.center, sphere.radius))
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
@@ -414,19 +418,22 @@ class GameMain:
                 sphere = self._scene._objs[objectId]
                 if self._players.get(objectId) is not None:
                     objType = "player"
+                    objectList.append(makeObjectJson(objectId,self._players[objectId].aiId, objType, sphere.center, sphere.radius))
                 else:
                     objType = self._objects.get(objectId).type
-                objectList.append(makeObjectJson(objectId, objType, sphere.center, sphere.radius))
+                    objectList.append(makeObjectJson(objectId,-2, objType, sphere.center, sphere.radius))
         return '{"ai_id":%d,"objects":[%s]}' % (aiId, ','.join(objectList))
 
-    def getStatusJson(self):
+    def getStatusJson(self,id:int):
         infoList = []
         for playerId, status in self._players.items():
+            if id!=-1 and playerId!=id:
+                continue
             skillList = []
             for name, level in status.skills.items():
                 skillList.append('{"name":"%s","level":%d}' % (name, level))
-            info = '{"id":%d,"health":%d,"max_health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
-                   % (playerId, status.health, status.maxHealth, status.vision, status.ability, ','.join(skillList))
+            info = '{"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
+                   % (playerId,self._players[playerId].aiId,status.health, status.maxHealth, status.vision, status.ability, ','.join(skillList))
             infoList.append(info)
         return '{"players":[%s]}' % ','.join(infoList)
 
@@ -542,7 +549,7 @@ class GameMain:
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
         skillLevel = self._players[playerId].skills['visionUp']
-        self._players[playerId].vision = 1000 + 500 * skillLevel
+        self._players[playerId].vision = 5000 + 1000 * skillLevel
         self._changedPlayer.add(playerId)
         self._changeList.append(self.makeSkillCastJson(playerId, 'visionUp', None, None))
 
