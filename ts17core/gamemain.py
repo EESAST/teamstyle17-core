@@ -13,7 +13,7 @@ class PlayerStatus:
         # 能力值，购买技能用
         self.ability = 0
         # 视野半径
-        self.vision = 0
+        self.vision = 5000
         # 技能列表，应以“技能名:技能等级”形式保存
         self.skills = {}
         # 技能冷却时间，以“技能名：剩余冷却时间”保存,每回合结束后-1
@@ -119,6 +119,7 @@ class GameMain:
         self._scene.insert(sphere, playerId)
         newStatus = PlayerStatus()
         newStatus.health = int((radius / 100) ** 3)
+        newStatus.maxHealth=newStatus.health
         newStatus.aiId=aiId
         self._players[playerId] = newStatus
 
@@ -537,7 +538,7 @@ class GameMain:
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
         skillLevel = self._players[playerId].skills['visionUp']
-        self._players[playerId].vision = 1000 + 500 * skillLevel
+        self._players[playerId].vision = 5000 + 1000 * skillLevel
         self._changedPlayer.add(playerId)
         self._changeList.append(self.makeSkillCastJson(playerId, 'visionUp', None, None))
 
