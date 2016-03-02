@@ -10,7 +10,7 @@ class Interface:
 
     def setInstruction(self, instruction: str):
         command = json.loads(instruction)
-        if not self.game.isBelong(command["id"], command["ai_id"]):
+        if command["action"] != "init" and not self.game.isBelong(command["id"], command["ai_id"]):
             raise ValueError('Player %d does not belong to AI %d' % (command["id"], command["ai_id"]))
         if command["action"] == "init":
             self.game = gamemain.GameMain(command["seed"], command["player"], self.callback)
