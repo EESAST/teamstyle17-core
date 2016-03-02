@@ -94,6 +94,7 @@ class GameMain:
         self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'teleport': 2, 'visionUp': 2, 'healthUp': 1}
         # 食物编号
         self._foodCount = 0
+        self._foodCountAll = 0
         # 营养源刷新剩余时间
         self._nutrientFlushTime = 0
         # 营养源刷新位置
@@ -256,9 +257,10 @@ class GameMain:
         for _ in range(foodPerTick):
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             food = scene.Sphere(center)
-            foodId = 1000000 + self._foodCount
+            foodId = 1000000 + self._foodCountAll
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
+            self._foodCountAll +=1
             self._foodCount += 1
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
             if self._foodCount > 1000:
@@ -390,9 +392,9 @@ class GameMain:
 
     # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
-        def makeObjectJson(objId, objType, pos, r):
-            return '{"id":%d,"adId":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
-                   % (objId, objType, pos[0], pos[1], pos[2], r)
+        def makeObjectJson(objId,aiId, objType, pos, r):
+            return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
+                   % (objId, aiId,objType, pos[0], pos[1], pos[2], r)
 
         objectList = []
         if aiId == -1:
@@ -416,14 +418,16 @@ class GameMain:
                     objectList.append(makeObjectJson(objectId,-2, objType, sphere.center, sphere.radius))
         return '{"ai_id":%d,"objects":[%s]}' % (aiId, ','.join(objectList))
 
-    def getStatusJson(self):
+    def getStatusJson(self,id:int):
         infoList = []
         for playerId, status in self._players.items():
+            if id!=-1 and playerId!=id:
+                continue
             skillList = []
             for name, level in status.skills.items():
                 skillList.append('{"name":"%s","level":%d}' % (name, level))
-            info = '{"id":%d,"health":%d,"max_health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
-                   % (playerId, status.health, status.maxHealth, status.vision, status.ability, ','.join(skillList))
+            info = '{"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
+                   % (playerId,self._players[playerId].aiId,status.health, status.maxHealth, status.vision, status.ability, ','.join(skillList))
             infoList.append(info)
         return '{"players":[%s]}' % ','.join(infoList)
 
