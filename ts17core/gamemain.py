@@ -15,7 +15,7 @@ class PlayerStatus:
         # 视野半径
         self.vision = 5000
         # 技能列表，应以“技能名:技能等级”形式保存
-        self.skills = {}
+        self.skillsLV = {}
         # 技能冷却时间，以“技能名：剩余冷却时间”保存,每回合结束后-1
         self.skillsCD = {}
         # 护盾剩余时间,每回合结束后-1
@@ -104,24 +104,24 @@ class GameMain:
         # 记录发生变化的玩家集合，在更新结束时发送这些玩家的变化
         self._changedPlayer = set()
         # 增加玩家
-        self.addNewPlayer(0, -2,tuple(self._mapSize // 2 for _ in range(3)), 2000)
+        self.addNewPlayer(0, -2, tuple(self._mapSize // 2 for _ in range(3)), 2000)
         pos1 = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
         pos2 = tuple(self._mapSize - pos1[x] for x in range(3))
-        self.addNewPlayer(1, 0,pos1, 1000)
-        self.addNewPlayer(2, 1,pos2, 1000)
+        self.addNewPlayer(1, 0, pos1, 1000)
+        self.addNewPlayer(2, 1, pos2, 1000)
 
     # player位置获取
     def playerPos(self, playerId):
         return self._scene.getObject(playerId).center
 
     # 添加新玩家
-    def addNewPlayer(self, playerId: int, aiId:int,pos: tuple, radius: int):
+    def addNewPlayer(self, playerId: int, aiId: int, pos: tuple, radius: int):
         sphere = scene.Sphere(pos, radius)
         self._scene.insert(sphere, playerId)
         newStatus = PlayerStatus()
         newStatus.health = int((radius / 100) ** 3)
-        newStatus.maxHealth=newStatus.health
-        newStatus.aiId=aiId
+        newStatus.maxHealth = newStatus.health
+        newStatus.aiId = aiId
         self._players[playerId] = newStatus
 
     def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int):
@@ -155,9 +155,13 @@ class GameMain:
 
     def makePlayerJson(self, playerId: int):
         status = self._players[playerId]
-        skillList = ",".join('{"name":"%s","level":%d}' % pair for pair in status.skills.items())
-        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
-               % (self._time, playerId, status.aiId, status.health, status.vision, status.ability, skillList)
+        skillList = ",".join(
+            '{"name":"%s","level":%d,"cd":%d}' % (skill, status.skillsLV[skill], status.skillsCD[skill]) for skill in
+            status.skillsLV.keys())
+        speedStr = ",".join('%.10f' % x for x in status.speed)
+        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,' \
+               '"ability":%d,"speed":[%s],"skills":[%s]}' \
+               % (self._time, playerId, status.aiId, status.health, status.vision, status.ability, speedStr, skillList)
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
@@ -211,9 +215,9 @@ class GameMain:
                 eatenPlayer = self._players.get(eatenId)
                 if eatenPlayer is not None:
                     if eatenPlayer.shieldTime == 0 or (
-                                    eatenPlayer.skills["shield"] < 4 and eatenPlayer.shiledLevel < 4):
+                                    eatenPlayer.skillsLV["shield"] < 4 and eatenPlayer.shiledLevel < 4):
                         self.healthChange(playerId, eatenPlayer.health // 2)
-                        self.playerDie(eatenId,playerId)
+                        self.playerDie(eatenId, playerId)
                         if eatenId == 0:
                             self.gameEnd(playerId)
                     continue
@@ -234,7 +238,7 @@ class GameMain:
                 objType = self._objects[touchedId].type
                 if objType == "spike":
                     if self._players[playerId].shieldTime == 0 or (
-                                    self._players[playerId].skills["shield"] < 5 and self._players[
+                                    self._players[playerId].skillsLV["shield"] < 5 and self._players[
                                 playerId].shieldLevel < 5):
                         damage = self._players[playerId].health // 3
                         self.healthChange(playerId, -damage)
@@ -260,7 +264,7 @@ class GameMain:
             foodId = 1000000 + self._foodCountAll
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
-            self._foodCountAll +=1
+            self._foodCountAll += 1
             self._foodCount += 1
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
             if self._foodCount > 1000:
@@ -320,7 +324,7 @@ class GameMain:
             self._changedPlayer.add(playerId)
 
     # 判断玩家生命小于0后即应调用该函数，由该函数负责所有后续处理工作
-    def playerDie(self, playerId: int, eatenBy = None):
+    def playerDie(self, playerId: int, eatenBy=None):
         player = self._players.get(playerId)
         if player is None:
             raise ValueError('Player %d does not exist' % playerId)
@@ -328,7 +332,7 @@ class GameMain:
         if eatenBy is not None and playerId == 0:
             eater = self._players.get(eatenBy)
             if eater is None:
-                raise ValueError('Player %d does not exist' % playerId)
+                raise ValueError('Eater %d does not exist' % eatenBy)
             self.gameEnd(eater.aiId)
         elif player.health > 0:
             raise ValueError('This player is still alive')
@@ -398,19 +402,23 @@ class GameMain:
 
     # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
     def getFieldJson(self, aiId: int):
-        def makeObjectJson(objId,aiId, objType, pos, r):
+        def makeObjectJson(objId, aiId, objType, pos, r):
             return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
-                   % (objId, aiId,objType, pos[0], pos[1], pos[2], r)
+                   % (objId, aiId, objType, pos[0], pos[1], pos[2], r)
 
         objectList = []
         if aiId == -1:
             for playerId in self._players:
                 sphere = self._scene.getObject(playerId)
-                objectList.append(makeObjectJson(playerId,self._players[playerId].aiId, "player", sphere.center, sphere.radius))
+                objectList.append(
+                    makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius))
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
-                objectList.append(makeObjectJson(objectId,-2, status.type, sphere.center, sphere.radius))
+                objectList.append(makeObjectJson(objectId, -2, status.type, sphere.center, sphere.radius))
+            # 规定营养产生处的ID为4000000+i，该ID暂无意义
+            for i, pos in enumerate(self._nutrientFlushPos):
+                objectList.append(makeObjectJson(4000000 + i, -2, 'source', pos, 0))
         else:
             visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
             visibleList = self._scene.intersect(visionSphere, False)
@@ -418,22 +426,27 @@ class GameMain:
                 sphere = self._scene._objs[objectId]
                 if self._players.get(objectId) is not None:
                     objType = "player"
-                    objectList.append(makeObjectJson(objectId,self._players[objectId].aiId, objType, sphere.center, sphere.radius))
+                    objectList.append(
+                        makeObjectJson(objectId, self._players[objectId].aiId, objType, sphere.center, sphere.radius))
                 else:
                     objType = self._objects.get(objectId).type
-                    objectList.append(makeObjectJson(objectId,-2, objType, sphere.center, sphere.radius))
+                    objectList.append(makeObjectJson(objectId, -2, objType, sphere.center, sphere.radius))
+            for i, pos in enumerate(self._nutrientFlushPos):
+                if sum((visionSphere.center[i] - pos[i]) ** 2 for i in range(3)) < visionSphere.radius ** 2:
+                    objectList.append(makeObjectJson(4000000 + i, -2, 'source', pos, 0))
         return '{"ai_id":%d,"objects":[%s]}' % (aiId, ','.join(objectList))
 
-    def getStatusJson(self,id:int):
+    def getStatusJson(self, id: int):
         infoList = []
         for playerId, status in self._players.items():
-            if id!=-1 and playerId!=id:
+            if id != -1 and playerId != id:
                 continue
             skillList = []
-            for name, level in status.skills.items():
+            for name, level in status.skillsLV.items():
                 skillList.append('{"name":"%s","level":%d}' % (name, level))
             info = '{"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
-                   % (playerId,self._players[playerId].aiId,status.health, status.maxHealth, status.vision, status.ability, ','.join(skillList))
+                   % (playerId, self._players[playerId].aiId, status.health, status.maxHealth, status.vision,
+                      status.ability, ','.join(skillList))
             infoList.append(info)
         return '{"players":[%s]}' % ','.join(infoList)
 
@@ -445,7 +458,7 @@ class GameMain:
         self._players[playerId].speed = newSpeed
 
     def castSkill(self, playerId: int, skillName: str, **kw):
-        if self._players[playerId].skills.get(skillName) is not None:
+        if self._players[playerId].skillsLV.get(skillName) is not None:
             if self._players[playerId].skillsCD[skillName] == 0:
                 if skillName == 'teleport':
                     self._castSkills[playerId] = CastTeleportInfo(kw['dst'])
@@ -456,7 +469,7 @@ class GameMain:
 
     # 远程攻击，参数为使用者Id
     def longAttack(self, playerId: int, enemy: int):
-        skillLevel = self._players[playerId].skills['longAttack']
+        skillLevel = self._players[playerId].skillsLV['longAttack']
         damage = 100 * skillLevel
         stop = False
         speed = 50 + 50 * skillLevel
@@ -477,7 +490,7 @@ class GameMain:
 
     # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
-        skillLevel = self._players[playerId].skills['shortAttack']
+        skillLevel = self._players[playerId].skillsLV['shortAttack']
         damage = 1000 + 200 * (skillLevel - 1)
         Range = 100 + 10 * (skillLevel - 1)
         self.healthChange(playerId, -50)
@@ -495,7 +508,7 @@ class GameMain:
 
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
-        skillLevel = self._players[playerId].skills['shield']
+        skillLevel = self._players[playerId].skillsLV['shield']
         self._players[playerId].shieldTime = 81 + 20 * skillLevel
         self._players[playerId].skillsCD['shield'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'shield', None, None))
@@ -532,7 +545,7 @@ class GameMain:
 
     # 瞬移，参数为使用者Id， 目标位置pos2
     def teleport(self, playerId: int, pos2: tuple):
-        skillLevel = self._players[playerId].skills['teleport']
+        skillLevel = self._players[playerId].skillsLV['teleport']
         if self._players[playerId].skillsCD['teleport'] != 0:
             return
         sphere = self._scene.getObject(playerId)
@@ -548,7 +561,7 @@ class GameMain:
 
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
-        skillLevel = self._players[playerId].skills['visionUp']
+        skillLevel = self._players[playerId].skillsLV['visionUp']
         self._players[playerId].vision = 5000 + 1000 * skillLevel
         self._changedPlayer.add(playerId)
         self._changeList.append(self.makeSkillCastJson(playerId, 'visionUp', None, None))
@@ -568,21 +581,21 @@ class GameMain:
         validSkillName = ['shortAttack', 'longAttack', 'shield', 'teleport', 'visionUp', 'healthUp']
         if skillName not in validSkillName:
             raise ValueError('Invalid skill name')
-        if self._players[playerId].skills.get(skillName) is not None:
-            price = self._skillPrice[skillName] * 2 ** self._players[playerId].skills[skillName]
-            if self._players[playerId].ability >= price and self._players[playerId].skills[skillName] < 5:
+        if self._players[playerId].skillsLV.get(skillName) is not None:
+            price = self._skillPrice[skillName] * 2 ** self._players[playerId].skillsLV[skillName]
+            if self._players[playerId].ability >= price and self._players[playerId].skillsLV[skillName] < 5:
                 self._changedPlayer.add(playerId)
-                self._players[playerId].skills[skillName] += 1
+                self._players[playerId].skillsLV[skillName] += 1
                 self._players[playerId].ability -= price
                 if (skillName == "visionUp"):
                     self.visionUp(playerId)
                 if (skillName == "healthUp"):
                     self.healthUp(playerId)
         else:
-            price = self._skillPrice[skillName] * 2 ** len(self._players[playerId].skills)
+            price = self._skillPrice[skillName] * 2 ** len(self._players[playerId].skillsLV)
             if self._players[playerId].ability >= price:
                 self._changedPlayer.add(playerId)
-                self._players[playerId].skills[skillName] = 1
+                self._players[playerId].skillsLV[skillName] = 1
                 self._players[playerId].ability -= price
                 self._players[playerId].skillsCD[skillName] = 0
                 if (skillName == "visionUp"):
