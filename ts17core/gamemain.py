@@ -1,4 +1,3 @@
-import math
 from ts17core import scene, myrand
 
 
@@ -18,6 +17,10 @@ class PlayerStatus:
         self.skillsLV = {}
         # 技能冷却时间，以“技能名：剩余冷却时间”保存,每回合结束后-1
         self.skillsCD = {}
+        # 远程攻击的生效倒计时，倒计到0时生效，-1表示不在倒计时中
+        self.longAttackCasting = -1
+        # 远程攻击的目标，-1表示没有
+        self.longAttackEnemy = -1
         # 护盾剩余时间,每回合结束后-1
         self.shieldTime = 0
         # 护盾等级（考虑到技能特殊效果触发的护盾等级与技能等级不符而设置）
@@ -178,7 +181,7 @@ class GameMain:
             if skillName == 'shortAttack':
                 self.shortAttack(playerId)
             elif skillName == 'longAttack':
-                self.longAttack(playerId, skillInfo.player)
+                self.longAttackSet(playerId, skillInfo.player)
             elif skillName == 'teleport':
                 self.teleport(playerId, skillInfo.dst)
             elif skillName == 'shield':
@@ -187,6 +190,10 @@ class GameMain:
                 self.visionUp(playerId)
             elif skillName == 'healthUp':
                 self.healthUp(playerId)
+        # 远程攻击蓄力到时间后结算远程攻击效果
+        for playerId, player in self._players.items():
+            if player.longAttackCasting == 0:
+                self.longAttackDone(player)
         self._castSkills.clear()
 
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
@@ -196,18 +203,14 @@ class GameMain:
             if playerId == 0:
                 player.speed = tuple(self._rand.randIn(10 * 1000000) / 1000000 for _ in range(3))
             if player.stopTime == 0:
-                self.move(playerId, player.speed, r)
-        for eatenId, obj in self._objects.items():
-            if obj.type == "bullet":
-                if self.longAttackBullet(eatenId) == False:
-                    self.move(eatenId, (0, 0, 0), 0, True)
+                self.playerMove(playerId)
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
         for playerId, player in self._players.items():
             if playerId == 0:
                 continue
             sphere = self._scene.getObject(playerId)
-            # 玩家可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
+            # 玩家（包括目标生物）可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
             insideList = self._scene.intersect(sphere, True)
             eatableList = [objId for objId in insideList if 1.2 * self._scene._objs[objId].radius < sphere.radius]
             for eatenId in eatableList:
@@ -217,7 +220,7 @@ class GameMain:
                     if eatenPlayer.shieldTime == 0 or (
                                     eatenPlayer.skillsLV["shield"] < 4 and eatenPlayer.shiledLevel < 4):
                         self.healthChange(playerId, eatenPlayer.health // 2)
-                        self.playerDie(eatenId, playerId)
+                        self.healthChange(eatenId, -eatenPlayer.health)
                         if eatenId == 0:
                             self.gameEnd(playerId)
                     continue
@@ -243,17 +246,6 @@ class GameMain:
                         damage = self._players[playerId].health // 3
                         self.healthChange(playerId, -damage)
                         self.objectDelete(touchedId)
-        # 认为目标生物ID为0，其只可能受到子弹伤害或被玩家食用
-        target = self._scene.getObject(0)
-        if target is not None:
-            insideList = self._scene.intersect(target, True)
-            eatableList = [objId for objId in insideList if 1.2 * self._scene._objs[objId].radius < target.radius]
-            for eatenId in eatableList:
-                if self._objects.get(eatenId) is not None and self._objects[eatenId].type == "bullet":
-                    continue
-                elif self._players.get(eatenId) is not None:
-                    self.healthChange(0, self._players[eatenId].health // 2)
-                    self.playerDie(eatenId, 0)
 
         # 4、随机产生新的食物等,暂且每回合1个食饵，且上限为1000个。每隔10-20回合刷新一个营养源;
         # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
@@ -298,6 +290,8 @@ class GameMain:
                 player.shieldLevel -= 1
             if player.stopTime > 0:
                 player.stopTime -= 1
+            if player.longAttackCasting > 0:
+                player.longAttackCasting -= 1
             for skillName in self._players[playerId].skillsCD.keys():
                 if player.skillsCD[skillName] > 0:
                     player.skillsCD[skillName] -= 1
@@ -324,17 +318,11 @@ class GameMain:
             self._changedPlayer.add(playerId)
 
     # 判断玩家生命小于0后即应调用该函数，由该函数负责所有后续处理工作
-    def playerDie(self, playerId: int, eatenBy=None):
+    def playerDie(self, playerId: int):
         player = self._players.get(playerId)
         if player is None:
             raise ValueError('Player %d does not exist' % playerId)
-        # 如果死亡的是目标生物而且是被吃掉的，那么吃掉者赢得比赛
-        if eatenBy is not None and playerId == 0:
-            eater = self._players.get(eatenBy)
-            if eater is None:
-                raise ValueError('Eater %d does not exist' % eatenBy)
-            self.gameEnd(eater.aiId)
-        elif player.health > 0:
+        if player.health > 0:
             raise ValueError('This player is still alive')
         self._players.pop(playerId)
         self._scene.delete(playerId)
@@ -356,43 +344,23 @@ class GameMain:
         self._scene.delete(objId)
         self._changeList.append(self.makeDeleteJson(objId))
 
-    # 物体移动，参数为物体Id, 物体速度speed，物体半径radius（用以判断移动是否合法）,是否为子弹isBullet（若子弹移动出界，则删除）
-    def move(self, objId: int, tSpeed: tuple, radius=0, isBullet=False):
-        if (isBullet):
-            enemy = self._scene.getObject(self._objects[objId].enemy).center
-            bullet = self._scene.getObject(objId).center
-            length = self._objects[objId].speed / math.sqrt(bullet[0] ** 2 + bullet[1] ** 2 + bullet[2] ** 2)
-            speed = tuple(length * enemy[x] for x in range(3))
-        else:
-            speed = tSpeed
-        x = self._scene.getObject(objId).center[0] + speed[0]
-        y = self._scene.getObject(objId).center[1] + speed[1]
-        z = self._scene.getObject(objId).center[2] + speed[2]
-        pos = (x, y, z)
-        if self.outsideMap(pos, radius):
-            if isBullet:
-                self._objects.pop(objId)
-                self._scene.delete(objId)
-            else:
-                vx = self._players[objId].speed[0]
-                vy = self._players[objId].speed[1]
-                vz = self._players[objId].speed[2]
-                if x + radius > self._mapSize or x - radius < 0:
-                    vx = 0
-                if y + radius > self._mapSize or y - radius < 0:
-                    vy = 0
-                if z + radius > self._mapSize or z - radius < 0:
-                    vz = 0
-                self._players[objId].speed = (vx, vy, vz)
-            return
-        else:
-            newSphere = scene.Sphere(pos, radius)
-            self._scene.modify(newSphere, objId)
-        if self._players.get(objId) is None:
-            aiId = -2
-        else:
-            aiId = self._players[objId].aiId
-        self._changeList.append(self.makeChangeJson(objId, -2, newSphere.center, newSphere.radius))
+    # 玩家移动，参数为玩家Id
+    def playerMove(self, playerId: int):
+        oldPos = self._scene.getObject(playerId).center
+        r = self._scene.getObject(playerId).radius
+        speed = self._players[playerId].speed
+        newPos = tuple(oldPos[i] + speed[i] for i in range(3))
+        if self.outsideMap(newPos, r):
+            newSpeed = list(speed)
+            for i in range(3):
+                if newPos[i] + r > self._mapSize or newPos[i] - r < 0:
+                    newSpeed[i] = 0
+            self._players[playerId].speed = tuple(newSpeed)
+            newPos = oldPos
+        newSphere = scene.Sphere(newPos, r)
+        self._scene.modify(newSphere, playerId)
+        self._changeList.append(self.makeChangeJson(
+            playerId, self._players[playerId].aiId, newSphere.center, newSphere.radius))
 
     def isBelong(self, playerId: int, aiId: int):
         player = self._players.get(playerId)
@@ -458,6 +426,8 @@ class GameMain:
         self._players[playerId].speed = newSpeed
 
     def castSkill(self, playerId: int, skillName: str, **kw):
+        if self._players[playerId].longAttackCasting >= 0:
+            return
         if self._players[playerId].skillsLV.get(skillName) is not None:
             if self._players[playerId].skillsCD[skillName] == 0:
                 if skillName == 'teleport':
@@ -467,37 +437,46 @@ class GameMain:
                 else:
                     self._castSkills[playerId] = CastSkillInfo(skillName)
 
-    # 远程攻击，参数为使用者Id
-    def longAttack(self, playerId: int, enemy: int):
-        skillLevel = self._players[playerId].skillsLV['longAttack']
-        damage = 100 * skillLevel
-        stop = False
-        speed = 50 + 50 * skillLevel
-        if (skillLevel == 5):
-            stop = True
-        # 发射速度是否这样处理？
+    # 远程攻击开始蓄力
+    def longAttackSet(self, playerId: int, enemyId: int):
+        player = self._players.get(playerId)
+        if player is None:
+            raise ValueError("Player %d does not exist" % playerId)
+        if self._players.get(enemyId) is None:
+            raise ValueError("Enemy %d does not exist" % enemyId)
         self.healthChange(playerId, -50)
-        self._players[playerId].skillsCD['longAttack'] = 80
-        bullet = scene.Sphere(self.getCenter(playerId))
-        i = 0
-        # 发射物体的ID命名方式为：3000000 + playerId * 1000 + i
-        while self._scene.getObject(3000000 + playerId * 1000 + i) is not None:
-            i += 1
-        bulletID = 3000000 + playerId * 1000 + i
-        self._scene.insert(bullet, bulletID)
-        self._objects[bulletID] = BulletStatus(damage, enemy, speed, playerId, stop)
-        self._changeList.append(self.makeSkillCastJson(playerId, 'longAttack', enemy, None))
+        player.skillsCD['longAttack'] = 80
+        player.longAttackCasting = 10
+        player.longAttackEnemy = enemyId
+
+    # 远程攻击蓄力完成
+    def longAttackDone(self, playerId: int):
+        player = self._players.get(playerId)
+        enemyId = player.longAttackEnemy
+        enemyObj = self._scene.getObject(enemyId)
+        if player is None:
+            raise ValueError("Player %d does not exist" % playerId)
+        if player.longAttackCasting != 0:
+            raise ValueError("Player %d is not completing a long attack cast" % playerId)
+        skillLevel = player.skillsLV['longAttack']
+        attackRange = 1000 + 250 * skillLevel
+        if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius < attackRange:
+            damage = 100 * skillLevel
+            self.healthChange(enemyId, -damage)
+            self._changeList.append(self.makeSkillHitJson('longAttack', enemyId))
+        player.longAttackCasting = -1
+        player.longAttackEnemy = -1
 
     # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['shortAttack']
         damage = 1000 + 200 * (skillLevel - 1)
-        Range = 100 + 10 * (skillLevel - 1)
+        attackRange = 100 + 10 * (skillLevel - 1)
         self.healthChange(playerId, -50)
         self._players[playerId].skillsCD['shortAttack'] = 80
         self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack', None, None))
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
-        virtualSphere = scene.Sphere(self.getCenter(playerId), Range)
+        virtualSphere = scene.Sphere(self.getCenter(playerId), attackRange)
         for objId in self._scene.intersect(virtualSphere):
             if self._players.get(objId) is not None and objId != playerId and self._players[playerId].shieldTime == 0:
                 self.healthChange(objId, -damage)
@@ -516,23 +495,6 @@ class GameMain:
     # 计算两点pos1, pos2距离
     def dis(self, pos1: tuple, pos2: tuple):
         return sum((pos1[i] - pos2[i]) ** 2 for i in range(3)) ** 0.5
-
-    # 判断远程攻击是否可以命中
-    def longAttackBullet(self, bulletId: int):
-        if (self.dis(self._scene.getObject(bulletId).center,
-                     self._scene.getObject(self._objects[bulletId].enemy).center) <
-                    self._scene.getObject(self._objects[bulletId].enemy).radius + self._objects[bulletId].speed):
-            if self._players[self._objects[bulletId].enemy].shieldTime == 0 and self._players[
-                self._objects[bulletId].enemy].shieldLevel < 5:
-                self.healthChange(self._objects[bulletId].enemy, -self._objects[bulletId].damage)
-            if (self._objects[bulletId].stop == True):
-                self._players[self._objects[bulletId].enemy].stopTime = 30
-            self._scene.delete(bulletId)
-            self._objects[bulletId].type = "None"
-            # self._objects.pop(bulletId)
-            return True
-        else:
-            return False
 
     # 判断某物体是否越界，参数为物体球心及半径
     def outsideMap(self, pos: tuple, radius):
