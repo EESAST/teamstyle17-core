@@ -157,14 +157,14 @@ class GameMain:
         return '{"info":"skill_hit","time":%d,"type":"%s","target":%d}' % (self._time, skillType, target)
 
     def makePlayerJson(self, playerId: int):
-        status = self._players[playerId]
+        player = self._players[playerId]
         skillList = ",".join(
-            '{"name":"%s","level":%d,"cd":%d}' % (skill, status.skillsLV[skill], status.skillsCD[skill]) for skill in
-            status.skillsLV.keys())
-        speedStr = ",".join('%.10f' % x for x in status.speed)
+            '{"name":"%s","level":%d,"cd":%d}' % (skill, player.skillsLV[skill], player.skillsCD[skill]) for skill in
+            player.skillsLV.keys())
+        speedStr = ",".join('%.10f' % x for x in player.speed)
         return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,' \
                '"ability":%d,"speed":[%s],"skills":[%s]}' \
-               % (self._time, playerId, status.aiId, status.health, status.vision, status.ability, speedStr, skillList)
+               % (self._time, playerId, player.aiId, player.health, player.vision, player.ability, speedStr, skillList)
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
@@ -368,54 +368,52 @@ class GameMain:
             raise ValueError('Player %d does not exist' % playerId)
         return player.aiId == aiId
 
-    # 若ID为-1则返回所有物体，否则返回该ID玩家视野内物体
+    # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
     def getFieldJson(self, aiId: int):
         def makeObjectJson(objId, aiId, objType, pos, r):
             return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
                    % (objId, aiId, objType, pos[0], pos[1], pos[2], r)
 
-        objectList = []
+        objectDict = {}
         if aiId == -1:
             for playerId in self._players:
                 sphere = self._scene.getObject(playerId)
-                objectList.append(
-                    makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius))
+                objectDict[playerId] = \
+                    makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius)
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
-                objectList.append(makeObjectJson(objectId, -2, status.type, sphere.center, sphere.radius))
+                objectDict[objectId] = makeObjectJson(objectId, -2, status.type, sphere.center, sphere.radius)
             # 规定营养产生处的ID为4000000+i，该ID暂无意义
             for i, pos in enumerate(self._nutrientFlushPos):
-                objectList.append(makeObjectJson(4000000 + i, -2, 'source', pos, 0))
+                nutrientId = 4000000 + i
+                objectDict[nutrientId] = makeObjectJson(nutrientId, -2, 'source', pos, 0)
         else:
-            visionSphere = scene.Sphere(self._scene.getObject(aiId).center, self._players[aiId].vision)
-            visibleList = self._scene.intersect(visionSphere, False)
-            for objectId in visibleList:
+            visionSpheres = [scene.Sphere(self._scene.getObject(playerId).center, self._players[playerId].vision)
+                             for playerId in self._players.keys() if self._players[playerId].aiId == aiId]
+            visibleLists = [self._scene.intersect(vs, False) for vs in visionSpheres]
+            for objectId in [i for ls in visibleLists for i in ls]:
+                if objectDict.get(objectId) is not None:
+                    continue
                 sphere = self._scene._objs[objectId]
                 if self._players.get(objectId) is not None:
-                    objType = "player"
-                    objectList.append(
-                        makeObjectJson(objectId, self._players[objectId].aiId, objType, sphere.center, sphere.radius))
+                    objectDict[objectId] = \
+                        makeObjectJson(objectId, self._players[objectId].aiId, 'player', sphere.center, sphere.radius)
                 else:
                     objType = self._objects.get(objectId).type
-                    objectList.append(makeObjectJson(objectId, -2, objType, sphere.center, sphere.radius))
+                    objectDict[objectId] = makeObjectJson(objectId, -2, objType, sphere.center, sphere.radius)
             for i, pos in enumerate(self._nutrientFlushPos):
-                if sum((visionSphere.center[i] - pos[i]) ** 2 for i in range(3)) < visionSphere.radius ** 2:
-                    objectList.append(makeObjectJson(4000000 + i, -2, 'source', pos, 0))
-        return '{"ai_id":%d,"objects":[%s]}' % (aiId, ','.join(objectList))
+                if any(sum((vs.center[i] - pos[i]) ** 2 for i in range(3)) < vs.radius ** 2 for vs in visionSpheres):
+                    nutrientId = 4000000 + i
+                    objectDict[nutrientId] = makeObjectJson(nutrientId, -2, 'source', pos, 0)
+        return '{"ai_id":%d,"objects":[%s]}' % (aiId, ','.join(objectDict.values()))
 
-    def getStatusJson(self, id: int):
+    def getStatusJson(self, aiId: int):
         infoList = []
-        for playerId, status in self._players.items():
-            if id != -1 and playerId != id:
+        for playerId, player in self._players.items():
+            if aiId != -1 and player.aiId != aiId:
                 continue
-            skillList = []
-            for name, level in status.skillsLV.items():
-                skillList.append('{"name":"%s","level":%d}' % (name, level))
-            info = '{"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,"ability":%d,"skills":[%s]}' \
-                   % (playerId, self._players[playerId].aiId, status.health, status.maxHealth, status.vision,
-                      status.ability, ','.join(skillList))
-            infoList.append(info)
+            infoList.append(self.makePlayerJson(playerId))
         return '{"players":[%s]}' % ','.join(infoList)
 
     def setSpeed(self, playerId: int, newSpeed: tuple):

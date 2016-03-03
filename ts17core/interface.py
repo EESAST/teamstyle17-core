@@ -31,12 +31,9 @@ class Interface:
     def getInstruction(self, instruction: str):
         command = json.loads(instruction)
         if command["action"] == "query_map":
-            return self.game.getFieldJson(command["id"])
+            return self.game.getFieldJson(command["ai_id"])
         elif command["action"] == "query_status":
-            if command["ai_id"]==-1:
-                return self.game.getStatusJson(-1)
-            else:
-                return self.game.getStatusJson(command["id"])
+            return self.game.getStatusJson(command["ai_id"])
         else:
             raise ValueError('No such action: %s' % command["action"])
 
