@@ -162,9 +162,10 @@ class GameMain:
             '{"name":"%s","level":%d,"cd":%d}' % (skill, player.skillsLV[skill], player.skillsCD[skill]) for skill in
             player.skillsLV.keys())
         speedStr = ",".join('%.10f' % x for x in player.speed)
-        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"vision":%d,' \
+        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,' \
                '"ability":%d,"speed":[%s],"skills":[%s]}' \
-               % (self._time, playerId, player.aiId, player.health, player.vision, player.ability, speedStr, skillList)
+               % (self._time, playerId, player.aiId, player.health, player.maxHealth,
+                  player.vision, player.ability, speedStr, skillList)
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
