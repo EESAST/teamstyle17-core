@@ -373,16 +373,17 @@ class GameMain:
 
     # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
     def getFieldJson(self, aiId: int):
-        def makeObjectJson(objId, aiId, objType, pos, r,longAttackCasting=-1):
-            return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longAttackCasting":%d}' \
-                   % (objId, aiId, objType, pos[0], pos[1], pos[2], r,longAttackCasting)
+        def makeObjectJson(objId, aiId, objType, pos, r,longAttackCasting=-1,shieldTime=-1):
+            return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longAttackCasting":%d,"shieldTime":%d}' \
+                   % (objId, aiId, objType, pos[0], pos[1], pos[2], r,longAttackCasting,shieldTime)
 
         objectDict = {}
         if aiId == -1:
             for playerId in self._players:
                 sphere = self._scene.getObject(playerId)
                 objectDict[playerId] = \
-                    makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius,self._players[playerId].longAttackCasting)
+                    makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius,
+					self._players[playerId].longAttackCasting,self._players[playerId].shieldTime)
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
@@ -401,7 +402,8 @@ class GameMain:
                 sphere = self._scene._objs[objectId]
                 if self._players.get(objectId) is not None:
                     objectDict[objectId] = \
-                        makeObjectJson(objectId, self._players[objectId].aiId, 'player', sphere.center, sphere.radius,self._players[objectId].longAttackCasting)
+                        makeObjectJson(objectId, self._players[objectId].aiId, 'player', sphere.center, sphere.radius,
+						self._players[objectId].longAttackCasting,self._players[objectId].shieldTime)
                 else:
                     objType = self._objects.get(objectId).type
                     objectDict[objectId] = makeObjectJson(objectId, -2, objType, sphere.center, sphere.radius)
