@@ -374,7 +374,7 @@ class GameMain:
     # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
     def getFieldJson(self, aiId: int):
         def makeObjectJson(objId, aiId, objType, pos, r,longAttackCasting=-1,shieldTime=-1):
-            return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longAttackCasting":%d,"shieldTime":%d}' \
+            return '{"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longattackcasting":%d,"shieldtime":%d}' \
                    % (objId, aiId, objType, pos[0], pos[1], pos[2], r,longAttackCasting,shieldTime)
 
         objectDict = {}
@@ -383,7 +383,7 @@ class GameMain:
                 sphere = self._scene.getObject(playerId)
                 objectDict[playerId] = \
                     makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius,
-					self._players[playerId].longAttackCasting,self._players[playerId].shieldTime)
+                    self._players[playerId].longAttackCasting,self._players[playerId].shieldTime)
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
@@ -403,7 +403,7 @@ class GameMain:
                 if self._players.get(objectId) is not None:
                     objectDict[objectId] = \
                         makeObjectJson(objectId, self._players[objectId].aiId, 'player', sphere.center, sphere.radius,
-						self._players[objectId].longAttackCasting,self._players[objectId].shieldTime)
+                        self._players[objectId].longAttackCasting,self._players[objectId].shieldTime)
                 else:
                     objType = self._objects.get(objectId).type
                     objectDict[objectId] = makeObjectJson(objectId, -2, objType, sphere.center, sphere.radius)
@@ -466,8 +466,8 @@ class GameMain:
         if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius < attackRange:
             damage = 100 * skillLevel
             self.healthChange(enemyId, -damage)
-			if skillLevel==5:
-			    self._players[enemyObj].stopTime=30
+            if skillLevel==5:
+                self._players[enemyObj].stopTime=30
             self._changeList.append(self.makeSkillHitJson('longAttack', enemyId))
         player.longAttackCasting = -1
         player.longAttackEnemy = -1
