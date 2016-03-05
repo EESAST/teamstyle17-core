@@ -162,7 +162,7 @@ class GameMain:
             '{"name":"%s","level":%d,"cd":%d}' % (skill, player.skillsLV[skill], player.skillsCD[skill]) for skill in
             player.skillsLV.keys())
         speedStr = ",".join('%.10f' % x for x in player.speed)
-		sphere=self._scene.getObject(playerId)
+        sphere=self._scene.getObject(playerId)
         pos = ",".join('%.10f' % x for x in sphere.center)
         return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,' \
                '"ability":%d,"pos":[%s],"r":%d,"speed":[%s],"skills":[%s]}' \
@@ -373,16 +373,16 @@ class GameMain:
 
     # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
     def getFieldJson(self, aiId: int):
-        def makeObjectJson(objId, aiId, objType, pos, r):
-            return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
-                   % (objId, aiId, objType, pos[0], pos[1], pos[2], r)
+        def makeObjectJson(objId, aiId, objType, pos, r,longAttackCasting=-1):
+            return '{"id":%d,"ai_Id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longAttackCasting":%d}' \
+                   % (objId, aiId, objType, pos[0], pos[1], pos[2], r,longAttackCasting)
 
         objectDict = {}
         if aiId == -1:
             for playerId in self._players:
                 sphere = self._scene.getObject(playerId)
                 objectDict[playerId] = \
-                    makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius)
+                    makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius,self._players[playerId].longAttackCasting)
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
@@ -401,7 +401,7 @@ class GameMain:
                 sphere = self._scene._objs[objectId]
                 if self._players.get(objectId) is not None:
                     objectDict[objectId] = \
-                        makeObjectJson(objectId, self._players[objectId].aiId, 'player', sphere.center, sphere.radius)
+                        makeObjectJson(objectId, self._players[objectId].aiId, 'player', sphere.center, sphere.radius,self._players[objectId].longAttackCasting)
                 else:
                     objType = self._objects.get(objectId).type
                     objectDict[objectId] = makeObjectJson(objectId, -2, objType, sphere.center, sphere.radius)
@@ -464,6 +464,8 @@ class GameMain:
         if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius < attackRange:
             damage = 100 * skillLevel
             self.healthChange(enemyId, -damage)
+			if skillLevel==5:
+			    self._players[enemyObj].stopTime=30
             self._changeList.append(self.makeSkillHitJson('longAttack', enemyId))
         player.longAttackCasting = -1
         player.longAttackEnemy = -1
