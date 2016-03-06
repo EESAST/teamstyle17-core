@@ -98,20 +98,20 @@ class GameMain:
         # 食物编号
         self._foodCount = 0
         self._foodCountAll = 0
-		#刺球编号
-		self._spikeCount=0
-		self._spikeCountAll=0
+        #刺球编号
+        self._spikeCount=0
+        self._spikeCountAll=0
         # 营养源刷新剩余时间
         self._nutrientFlushTime = 0
         # 营养源刷新位置
         self._nutrientFlushPos = []
-		for x in range(8):
-		    temp=x;
-			self._nutrientFlushPos.append(tuple(self._rand.randIn(self._mapSize//2)+(temp&(1<<y))*self._mapSize//2 for y in range(3)))
-		# 营养源刷新剩余时间
+        for x in range(8):
+            temp=x;
+            self._nutrientFlushPos.append(tuple(self._rand.randIn(self._mapSize//2)+(temp&(1<<y))*self._mapSize//2 for y in range(3)))
+        # 营养源刷新剩余时间
         self._spikeFlushTime = 0
         # 营养源刷新位置
-        	
+            
         # 记录变化情况的json的list，每项为一个json object
         self._changeList = []
         # 记录发生变化的玩家集合，在更新结束时发送这些玩家的变化
@@ -183,6 +183,16 @@ class GameMain:
     # 相关辅助函数可自行编写
     def update(self):
         # 初始化返回给平台的变化信息的json List
+        if self._time==5000:
+            tempid=0
+            tempmax=0
+            for playerId in self._players:
+                if self._players[playerId].aiId==-2:
+                    continue
+                if self._players[playerId].health>tempmax:
+                    tempmax=tempid
+                    tempid=self._players[playerId].aiId
+            self.gameEnd(tempid)
         self._changeList = []
         self._changedPlayer = set()
 
@@ -245,7 +255,7 @@ class GameMain:
                 elif objType == "nutrient":
                     self.healthChange(playerId, self._rand.rand() % 301 + 200)
                     player.ability += self._rand.rand() % 5 + 1
-					self.nutrientMove(playerId)
+                    self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
             # 玩家接触到的物体对其产生效果，包括受到刺球伤害及子弹伤害
             touchList = self._scene.intersect(sphere, False)
@@ -264,9 +274,9 @@ class GameMain:
         # 4、随机产生新的食物等,暂且每回合1个食饵，且上限为1000个。每隔100-110回合刷新一个营养源;
         # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
         if self._time==0:
-		    foodPerTick=500
-		elif:
-		    foodPerTick = 10
+            foodPerTick=500
+        else:
+            foodPerTick = 10
         for _ in range(foodPerTick):
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             food = scene.Sphere(center)
@@ -278,13 +288,13 @@ class GameMain:
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
             if self._foodCount > 1000:
                 break
-		
-		if self._time%100=0:
-		    spikenum=1
-		elif:
-		    spikenum =0
+        
+        if self._time%100==0:
+            spikenum=1
+        else:
+            spikenum =0
         for _ in range(foodPerTick):
-		    if self._spikeCount >= 10:
+            if self._spikeCount >= 10:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             spike = scene.Sphere(center)
@@ -313,7 +323,7 @@ class GameMain:
                 self._nutrientFlushTime = self._rand.randIn(100) + 10
         else:
             self._nutrientFlushTime -= 1
-			
+            
 
         # 5、时间+1
         # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
@@ -558,14 +568,14 @@ class GameMain:
         self._scene.modify(newSphere, playerId)
         self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos2, newSphere.radius))
     
-	def nutrient_move(self,playerId: int)
-	    sphere=self._scene.getObject(playerId)
-		pos=(self._rand.randIn(self._mapSize-2*sphere.radius)+radius for _ in range(3))
-		newSphere=scene.Sphere(pos,sphere.radius)
-		self._scene.modify(newSphere,playerId)
-		self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos2, newSphere.radius))
-	
-	
+    def nutrientMove(self,playerId: int):
+        sphere=self._scene.getObject(playerId)
+        pos=(self._rand.randIn(self._mapSize-2*sphere.radius)+radius for _ in range(3))
+        newSphere=scene.Sphere(pos,sphere.radius)
+        self._scene.modify(newSphere,playerId)
+        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos2, newSphere.radius))
+    
+    
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['visionUp']
