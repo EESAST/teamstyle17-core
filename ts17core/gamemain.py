@@ -195,7 +195,6 @@ class GameMain:
                     tempmax=tempid
                     tempid=self._players[playerId].aiId
             self.gameEnd(tempid)
-            return
 
         # 1、结算技能效果
         # TODO 远程攻击和瞬间移动的满级效果没有写
