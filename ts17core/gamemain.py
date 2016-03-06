@@ -183,6 +183,8 @@ class GameMain:
     # 相关辅助函数可自行编写
     def update(self):
         # 初始化返回给平台的变化信息的json List
+        self._changeList = []
+        self._changedPlayer = set()
         if self._time==5000:
             tempid=0
             tempmax=0
@@ -193,8 +195,7 @@ class GameMain:
                     tempmax=tempid
                     tempid=self._players[playerId].aiId
             self.gameEnd(tempid)
-        self._changeList = []
-        self._changedPlayer = set()
+            return
 
         # 1、结算技能效果
         # TODO 远程攻击和瞬间移动的满级效果没有写
