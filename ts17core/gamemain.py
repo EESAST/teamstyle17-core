@@ -567,10 +567,10 @@ class GameMain:
     
     def nutrientMove(self,playerId: int):
         sphere=self._scene.getObject(playerId)
-        pos=(self._rand.randIn(self._mapSize-2*sphere.radius)+radius for _ in range(3))
+        pos=tuple(self._rand.randIn(self._mapSize-2*sphere.radius)+sphere.radius for _ in range(3))
         newSphere=scene.Sphere(pos,sphere.radius)
         self._scene.modify(newSphere,playerId)
-        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos2, newSphere.radius))
+        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos, newSphere.radius))
     
     
     # 提升视野，参数为使用者Id
