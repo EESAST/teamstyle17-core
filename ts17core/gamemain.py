@@ -107,7 +107,8 @@ class GameMain:
         self._nutrientFlushPos = []
         for x in range(8):
             temp=x;
-            self._nutrientFlushPos.append(tuple(self._rand.randIn(self._mapSize//2)+((temp&(1<<y))>>y)*self._mapSize//2 for y in range(3)))
+            for _ in range(10):
+                self._nutrientFlushPos.append(tuple(self._rand.randIn(self._mapSize//2)+((temp&(1<<y))>>y)*self._mapSize//2 for y in range(3)))
 
         # 记录变化情况的json的list，每项为一个json object
         self._changeList = []
@@ -189,7 +190,7 @@ class GameMain:
                 if self._players[playerId].aiId==-2:
                     continue
                 if self._players[playerId].health>tempmax:
-                    tempmax=tempid
+                    tempmax=self._players[playerId].health
                     tempid=self._players[playerId].aiId
             self.gameEnd(tempid)
 
@@ -501,7 +502,7 @@ class GameMain:
         if player.longAttackCasting != 0:
             raise ValueError("Player %d is not completing a long attack cast" % playerId)
         skillLevel = player.skillsLV['longAttack']
-        attackRange = 1000 + 250 * skillLevel
+        attackRange = 3000 + 500 * skillLevel
         if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius < attackRange:
             damage = 100 * skillLevel
             self.healthChange(enemyId, -damage)
