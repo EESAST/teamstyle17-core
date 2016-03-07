@@ -78,7 +78,7 @@ class GameMain:
         # 游戏结束标志
         self._gameEnd = False
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
-        self._mapSize = 40000
+        self._mapSize = 20000
         # 当前时刻，以tick为单位，是非负整数
         self._time = 0
         # 保存玩家信息，应以“玩家ID:PlayerStatus”形式保存
@@ -173,9 +173,9 @@ class GameMain:
         sphere=self._scene.getObject(playerId)
         pos = ",".join('%.10f' % x for x in sphere.center)
         return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,' \
-               '"ability":%d,"pos":[%s],"r":%d,"speed":[%s],"skills":[%s]}' \
+               '"ability":%d,"pos":[%s],"r":%d,"longattackcasting":%d,"shieldtime":%d,"speed":[%s],"skills":[%s]}' \
                % (self._time, playerId, player.aiId, player.health, player.maxHealth,
-                  player.vision, player.ability,pos,sphere.radius,speedStr, skillList)
+                  player.vision, player.ability,pos,sphere.radius,player.longAttackCasting,player.shieldTime,speedStr, skillList)
 
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
@@ -487,7 +487,7 @@ class GameMain:
             raise ValueError("Player %d does not exist" % playerId)
         if self._players.get(enemyId) is None:
             raise ValueError("Enemy %d does not exist" % enemyId)
-        self.healthChange(playerId, -50)
+        self.healthChange(playerId, -10)
         player.skillsCD['longAttack'] = 80
         player.longAttackCasting = 10
         player.longAttackEnemy = enemyId
@@ -503,6 +503,10 @@ class GameMain:
             raise ValueError("Player %d is not completing a long attack cast" % playerId)
         skillLevel = player.skillsLV['longAttack']
         attackRange = 3000 + 500 * skillLevel
+        if self._players[enemyId].shieldTime==0 and self._players[enemyId].shieldLevel<5:
+            player.longAttackCasting = -1
+            player.longAttackEnemy = -1
+            return
         if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius < attackRange:
             damage = 100 * skillLevel
             self.healthChange(enemyId, -damage)
@@ -523,12 +527,13 @@ class GameMain:
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
         virtualSphere = scene.Sphere(self.getCenter(playerId), attackRange)
         for objId in self._scene.intersect(virtualSphere):
-            if self._players.get(objId) is not None and objId != playerId and self._players[playerId].shieldTime == 0:
+            if self._players.get(objId) is not None and objId != playerId and self._players[objId].shieldTime == 0\
+                    and self._players[objId].shieldLevel<5:
                 self.healthChange(objId, -damage)
                 self._changeList.append(self.makeSkillHitJson('shortAttack', objId))
         if skillLevel == 5:
             # self._players[playerId].shieldTime = 30
-            self._players[playerId].shieldLevel = 34
+            self._players[playerId].shieldLevel = 35
 
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
