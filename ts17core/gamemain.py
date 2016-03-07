@@ -107,11 +107,8 @@ class GameMain:
         self._nutrientFlushPos = []
         for x in range(8):
             temp=x;
-            self._nutrientFlushPos.append(tuple(self._rand.randIn(self._mapSize//2)+(temp&(1<<y))*self._mapSize//2 for y in range(3)))
-        # 营养源刷新剩余时间
-        self._spikeFlushTime = 0
-        # 营养源刷新位置
-            
+            self._nutrientFlushPos.append(tuple(self._rand.randIn(self._mapSize//2)+((temp&(1<<y))>>y)*self._mapSize//2 for y in range(3)))
+
         # 记录变化情况的json的list，每项为一个json object
         self._changeList = []
         # 记录发生变化的玩家集合，在更新结束时发送这些玩家的变化
