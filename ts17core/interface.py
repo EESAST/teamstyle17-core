@@ -17,9 +17,7 @@ class Interface:
         elif command["action"] == "move":
             self.game.setSpeed(command["id"], (command["x"], command["y"], command["z"]))
         elif command["action"] == "use_skill":
-            if command["skill_type"] == "teleport":
-                self.game.castSkill(command["id"], "teleport", dst=(command["x"], command["y"], command["z"]))
-            elif command["skill_type"] == "longAttack":
+            if command["skill_type"] == "longAttack":
                 self.game.castSkill(command["id"], "longAttack", player=command["target"])
             else:
                 self.game.castSkill(command["id"], command["skill_type"])

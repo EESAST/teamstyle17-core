@@ -9,6 +9,8 @@ class PlayerStatus:
         self.health = 0
         # 速度矢量
         self.speed = (0, 0, 0)
+        # 速度上限
+        self.speedLimit = 100
         # 能力值，购买技能用
         self.ability = 0
         # 视野半径
@@ -21,12 +23,12 @@ class PlayerStatus:
         self.longAttackCasting = -1
         # 远程攻击的目标，-1表示没有
         self.longAttackEnemy = -1
+        # 冲刺剩余时间，每回合结束后-1
+        self.dashTime = 0
         # 护盾剩余时间,每回合结束后-1
         self.shieldTime = 0
         # 护盾等级（考虑到技能特殊效果触发的护盾等级与技能等级不符而设置）
         self.shieldLevel = 0
-        # 最近一次使用瞬间移动后经过的时间（为瞬移满级效果设定）
-        self.teleportTime = 0
         # 不可移动时间
         self.stopTime = 0
         # 历史最大血量
@@ -61,12 +63,6 @@ class CastSkillInfo():
         self.name = name
 
 
-class CastTeleportInfo():
-    def __init__(self, tDst):
-        self.name = "teleport"
-        self.dst = tDst
-
-
 class CastLongAttackInfo():
     def __init__(self, tPlayer):
         self.name = "longAttack"
@@ -94,7 +90,7 @@ class GameMain:
         # 随机数生成器，所有随机事件必须从这里获取随机数
         self._rand = myrand.MyRand(seed)
         # 技能基础价格
-        self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'teleport': 2, 'visionUp': 2, 'healthUp': 1}
+        self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'dash': 2, 'visionUp': 2, 'healthUp': 1}
         # 食物编号
         self._foodCount = 0
         self._foodCountAll = 0
@@ -141,17 +137,13 @@ class GameMain:
         return '{"info":"delete","time":%d,"id":%d}' % (self._time, objId)
 
     # 若target为None则没有目标物体，pos为None则没有目标坐标
-    def makeSkillCastJson(self, source: int, skillType: str, target, pos):
+    def makeSkillCastJson(self, source: int, skillType: str, target=None):
         if target is not None:
             targetStr = ',"target":%d' % target
         else:
             targetStr = ''
-        if pos is not None:
-            posStr = ',"x":%.10f,"y":%.10f,"z":%.10f' % pos
-        else:
-            posStr = ''
-        return '{"info":"skill_cast","time":%d,"source":%d,"type":"%s"%s%s}' \
-               % (self._time, source, skillType, targetStr, posStr)
+        return '{"info":"skill_cast","time":%d,"source":%d,"type":"%s"%s}' \
+               % (self._time, source, skillType, targetStr)
 
     def makeSkillHitJson(self, skillType: str, target: int):
         return '{"info":"skill_hit","time":%d,"type":"%s","target":%d}' % (self._time, skillType, target)
@@ -175,7 +167,6 @@ class GameMain:
         self._changedPlayer = set()
 
         # 1、结算技能效果
-        # TODO 远程攻击和瞬间移动的满级效果没有写
         for playerId in self._castSkills:
             skillInfo = self._castSkills[playerId]
             skillName = skillInfo.name
@@ -183,22 +174,24 @@ class GameMain:
                 self.shortAttack(playerId)
             elif skillName == 'longAttack':
                 self.longAttackSet(playerId, skillInfo.player)
-            elif skillName == 'teleport':
-                self.teleport(playerId, skillInfo.dst)
+            elif skillName == 'dash':
+                self.dash(playerId)
             elif skillName == 'shield':
                 self.shield(playerId)
             elif skillName == 'visionUp':
                 self.visionUp(playerId)
             elif skillName == 'healthUp':
                 self.healthUp(playerId)
-        # 远程攻击蓄力到时间后结算远程攻击效果
         for playerId, player in self._players.items():
+            # 远程攻击蓄力到时间后结算远程攻击效果
             if player.longAttackCasting == 0:
-                self.longAttackDone(player)
+                self.longAttackDone(playerId)
+            # 冲刺状态时间到后恢复原始速度
+            if player.dashTime == 0:
+                player.speedLimit = 100
         self._castSkills.clear()
 
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
-        # TODO 关于物体触碰边界可以作更为细致的处理
         for playerId, player in self._players.items():
             r = self._scene.getObject(playerId).radius
             if playerId == 0:
@@ -293,6 +286,8 @@ class GameMain:
                 player.stopTime -= 1
             if player.longAttackCasting > 0:
                 player.longAttackCasting -= 1
+            if player.dashTime > 0:
+                player.dashTime -= 1
             for skillName in self._players[playerId].skillsCD.keys():
                 if player.skillsCD[skillName] > 0:
                     player.skillsCD[skillName] -= 1
@@ -429,9 +424,7 @@ class GameMain:
             return
         if self._players[playerId].skillsLV.get(skillName) is not None:
             if self._players[playerId].skillsCD[skillName] == 0:
-                if skillName == 'teleport':
-                    self._castSkills[playerId] = CastTeleportInfo(kw['dst'])
-                elif skillName == 'longAttack':
+                if skillName == 'longAttack':
                     self._castSkills[playerId] = CastLongAttackInfo(kw['player'])
                 else:
                     self._castSkills[playerId] = CastSkillInfo(skillName)
@@ -447,6 +440,7 @@ class GameMain:
         player.skillsCD['longAttack'] = 80
         player.longAttackCasting = 10
         player.longAttackEnemy = enemyId
+        self._changeList.append(self.makeSkillCastJson(playerId, 'longAttack', enemyId))
 
     # 远程攻击蓄力完成
     def longAttackDone(self, playerId: int):
@@ -473,7 +467,7 @@ class GameMain:
         attackRange = 100 + 10 * (skillLevel - 1)
         self.healthChange(playerId, -50)
         self._players[playerId].skillsCD['shortAttack'] = 80
-        self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack', None, None))
+        self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack'))
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
         virtualSphere = scene.Sphere(self.getCenter(playerId), attackRange)
         for objId in self._scene.intersect(virtualSphere):
@@ -489,7 +483,7 @@ class GameMain:
         skillLevel = self._players[playerId].skillsLV['shield']
         self._players[playerId].shieldTime = 81 + 20 * skillLevel
         self._players[playerId].skillsCD['shield'] = 100
-        self._changeList.append(self.makeSkillCastJson(playerId, 'shield', None, None))
+        self._changeList.append(self.makeSkillCastJson(playerId, 'shield'))
 
     # 计算两点pos1, pos2距离
     def dis(self, pos1: tuple, pos2: tuple):
@@ -505,33 +499,28 @@ class GameMain:
             return False
 
     # 瞬移，参数为使用者Id， 目标位置pos2
-    def teleport(self, playerId: int, pos2: tuple):
-        skillLevel = self._players[playerId].skillsLV['teleport']
-        if self._players[playerId].skillsCD['teleport'] != 0:
-            return
-        sphere = self._scene.getObject(playerId)
-        if self.outsideMap(pos2, sphere.radius):
-            return
-        if skillLevel != 5:
-            if self.dis(sphere.center, pos2) > 9000 + 1000 * skillLevel:
-                return
-        self._players[playerId].skillsCD['teleport'] = 100
-        newSphere = scene.Sphere(pos2, sphere.radius)
-        self._scene.modify(newSphere, playerId)
-        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos2, newSphere.radius))
+    def dash(self, playerId: int):
+        player = self._players.get(playerId)
+        skillLevel = player.skillsLV['dash']
+        if player is None:
+            raise ValueError("Player %d does not exist" % playerId)
+        player.dashTime = 10
+        player.speedLimit += skillLevel * 20
+        player.skillsCD['dash'] = 100
+        self._changeList.append(self.makeSkillCastJson(playerId, 'dash'))
 
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['visionUp']
         self._players[playerId].vision = 5000 + 1000 * skillLevel
         self._changedPlayer.add(playerId)
-        self._changeList.append(self.makeSkillCastJson(playerId, 'visionUp', None, None))
+        self._changeList.append(self.makeSkillCastJson(playerId, 'visionUp'))
 
     # 生命回复，参数为使用者Id
     def healthUp(self, playerId: int):
         self.healthChange(playerId, 500)
         self._changedPlayer.add(playerId)
-        self._changeList.append(self.makeSkillCastJson(playerId, 'healthUp', None, None))
+        self._changeList.append(self.makeSkillCastJson(playerId, 'healthUp'))
 
     # 获取球心
     def getCenter(self, Id: int):
@@ -539,7 +528,7 @@ class GameMain:
 
     # 购买技能，参数为购买者Id及购买技能名称skillName
     def upgradeSkill(self, playerId: int, skillName: str):
-        validSkillName = ['shortAttack', 'longAttack', 'shield', 'teleport', 'visionUp', 'healthUp']
+        validSkillName = ['shortAttack', 'longAttack', 'shield', 'dash', 'visionUp', 'healthUp']
         if skillName not in validSkillName:
             raise ValueError('Invalid skill name')
         if self._players[playerId].skillsLV.get(skillName) is not None:
