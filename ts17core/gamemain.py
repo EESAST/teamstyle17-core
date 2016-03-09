@@ -559,6 +559,7 @@ class GameMain:
         if skillLevel==5:
             player.dashTime+=40
         player.speedLimit += skillLevel * 20
+        self.healthChange(playerId, -40)
         player.skillsCD['dash'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'dash'))
 
