@@ -457,7 +457,7 @@ class GameMain:
         return '{"players":[%s]}' % ','.join(infoList)
 
     def setSpeed(self, playerId: int, newSpeed: tuple):
-        speedLimit = self._playersp[playerId].speedLimit
+        speedLimit = self._players[playerId].speedLimit
         newSpeedLength = sum(x ** 2 for x in newSpeed) ** 0.5
         if newSpeedLength > speedLimit:
             newSpeed = tuple(x * speedLimit / newSpeedLength for x in newSpeed)
