@@ -244,11 +244,10 @@ class GameMain:
                     continue
                 objType = self._objects[eatenId].type
                 if objType == "food":
-                    self.healthChange(playerId, 10)
+                    self.healthChange(playerId, 40)
                     self.objectDelete(eatenId)
                     self._foodCount -= 1
                 elif objType == "nutrient":
-                    self.healthChange(playerId, self._rand.rand() % 301 + 200)
                     player.ability += self._rand.rand() % 5 + 1
                     self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
@@ -350,7 +349,7 @@ class GameMain:
             raise ValueError('Player %d does not exist' % playerId)
         player.healthChange(delta)
         newHealth = player.health
-        if newHealth <= 0:
+        if newHealth < player.maxHealth//4:
             self.playerDie(playerId)
         else:
             newRadius = (newHealth ** (1 / 3)) * 100
