@@ -235,12 +235,11 @@ class GameMain:
                 self._changeList.append(self.makeDeleteJson(eatenId))
                 eatenPlayer = self._players.get(eatenId)
                 if eatenPlayer is not None:
-                    if eatenPlayer.shieldTime == 0 or (
-                                    eatenPlayer.skillsLV["shield"] < 4 and eatenPlayer.shiledLevel < 4):
-                        self.healthChange(playerId, eatenPlayer.health // 2)
-                        self.healthChange(eatenId, -eatenPlayer.health)
-                        if eatenId == 0:
-                            self.gameEnd(playerId)
+                    if (eatenPlayer.shieldTime == 0 or
+                                    eatenPlayer.skillsLV["shield"] < 4) and eatenPlayer.shiledLevel < 5:
+                        #self.healthChange(playerId, eatenPlayer.health // 2)
+                        #self.healthChange(eatenId, -eatenPlayer.health)
+                        self.gameEnd(playerId)
                     continue
                 objType = self._objects[eatenId].type
                 if objType == "food":
@@ -283,11 +282,10 @@ class GameMain:
             if self._foodCount > 1000:
                 break
 
+        spikenum=0
         if self._time % 100 == 0:
-            spikenum = 1
-        else:
-            spikenum = 0
-        for _ in range(foodPerTick):
+            spikenum += 1
+        for _ in range(spikenum):
             if self._spikeCount >= 10:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
@@ -557,9 +555,9 @@ class GameMain:
         skillLevel = player.skillsLV['dash']
         if player is None:
             raise ValueError("Player %d does not exist" % playerId)
-        player.dashTime = 50
+        player.dashTime = 40
         if skillLevel==5:
-            player.dashTime+=50
+            player.dashTime+=40
         player.speedLimit += skillLevel * 20
         player.skillsCD['dash'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'dash'))
