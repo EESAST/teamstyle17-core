@@ -460,7 +460,7 @@ class GameMain:
         return '{"players":[%s]}' % ','.join(infoList)
 
     def setSpeed(self, playerId: int, newSpeed: tuple):
-        speedLimit = 100
+        speedLimit = self._playersp[playerId].speedLimit
         newSpeedLength = sum(x ** 2 for x in newSpeed) ** 0.5
         if newSpeedLength > speedLimit:
             newSpeed = tuple(x * speedLimit / newSpeedLength for x in newSpeed)
@@ -558,7 +558,9 @@ class GameMain:
         skillLevel = player.skillsLV['dash']
         if player is None:
             raise ValueError("Player %d does not exist" % playerId)
-        player.dashTime = 10
+        player.dashTime = 50
+        if skillLevel==5:
+            player.dashTime+=50
         player.speedLimit += skillLevel * 20
         player.skillsCD['dash'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'dash'))
