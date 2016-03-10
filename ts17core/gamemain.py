@@ -236,7 +236,7 @@ class GameMain:
                 eatenPlayer = self._players.get(eatenId)
                 if eatenPlayer is not None:
                     if (eatenPlayer.shieldTime == 0 or
-                                    eatenPlayer.skillsLV["shield"] < 4) and eatenPlayer.shiledLevel < 5:
+                                    eatenPlayer.skillsLV["shield"] < 4) and eatenPlayer.shieldLevel < 5:
                         #self.healthChange(playerId, eatenPlayer.health // 2)
                         #self.healthChange(eatenId, -eatenPlayer.health)
                         self.gameEnd(playerId)
