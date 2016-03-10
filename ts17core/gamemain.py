@@ -360,7 +360,7 @@ class GameMain:
         player = self._players.get(playerId)
         if player is None:
             raise ValueError('Player %d does not exist' % playerId)
-        if player.health > 0:
+        if player.health > player.maxHealth//4:
             raise ValueError('This player is still alive')
         self._players.pop(playerId)
         self._scene.delete(playerId)
