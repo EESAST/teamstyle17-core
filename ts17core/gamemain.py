@@ -133,15 +133,15 @@ class GameMain:
         newStatus.aiId = aiId
         self._players[playerId] = newStatus
 
-    def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int):
+    def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int,nutrientMove=0):
         if self._objects.get(playerId) is not None:
             objType = self._objects[playerId].type
         elif self._players.get(playerId) is not None:
             objType = "player"
         else:
             objType = None
-        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
-               % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r)
+        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"nutrientmove":%d}' \
+               % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r,nutrientMove)
 
     def makeDeleteJson(self, objId: int):
         return '{"info":"delete","time":%d,"id":%d}' % (self._time, objId)
@@ -568,7 +568,7 @@ class GameMain:
         pos = tuple(self._rand.randIn(self._mapSize - 2 * sphere.radius) + sphere.radius for _ in range(3))
         newSphere = scene.Sphere(pos, sphere.radius)
         self._scene.modify(newSphere, playerId)
-        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos, newSphere.radius))
+        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos, newSphere.radius,1))
 
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
