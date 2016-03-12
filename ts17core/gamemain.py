@@ -70,9 +70,11 @@ class CastLongAttackInfo():
 
 
 class GameMain:
-    def __init__(self, seed, playerNum, callback):
+    def __init__(self, seed, playerNum, type,callback):
         # 游戏结束标志
         self._gameEnd = False
+        #0表示正常比赛，非零数X表示测试赛X
+        self.gameType=type
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
         self._mapSize = 20000
         # 当前时刻，以tick为单位，是非负整数
@@ -155,8 +157,8 @@ class GameMain:
         return '{"info":"skill_cast","time":%d,"source":%d,"type":"%s"%s}' \
                % (self._time, source, skillType, targetStr)
 
-    def makeSkillHitJson(self, skillType: str, target: int):
-        return '{"info":"skill_hit","time":%d,"type":"%s","target":%d}' % (self._time, skillType, target)
+    def makeSkillHitJson(self, skillType: str,player:int, target: int):
+        return '{"info":"skill_hit","time":%d,"type":"%s","player":%d,"target":%d}' % (self._time, skillType, player,target)
 
     def makePlayerJson(self, playerId: int):
         player = self._players[playerId]
@@ -271,7 +273,7 @@ class GameMain:
         # 4、随机产生新的食物等,暂且每回合1个食饵，且上限为1000个。每隔100-110回合刷新一个营养源;
         # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
         if self._time == 0:
-            foodPerTick = 500
+            foodPerTick = 300
         else:
             foodPerTick = 10
         for _ in range(foodPerTick):
@@ -283,7 +285,7 @@ class GameMain:
             self._foodCountAll += 1
             self._foodCount += 1
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
-            if self._foodCount > 1000:
+            if self._foodCount > 500:
                 break
 
         spikenum=0
@@ -341,6 +343,17 @@ class GameMain:
         for playerId in self._changedPlayer:
             if self._players.get(playerId) is not None:  # 确保只生成未死亡的玩家的变化信息
                 self._changeList.append(self.makePlayerJson(playerId))
+
+        #判断是否为测试赛
+        if self.gameType!=0:
+            #测试赛1，如果选手移动则成功
+            if (self.gameType==1):
+                for playerId in self._players:
+                    if (self._players[playerId].aiId!=0):
+                        continue
+                    if self._players[playerId].speed!=(0,0,0):
+                        self.testGameEnd(10)
+
         # 调用回调函数，向平台传回变化信息
         self._callback("[" + ",".join(self._changeList) + "]")
 
@@ -510,7 +523,7 @@ class GameMain:
             self.healthChange(enemyId, -damage)
             if skillLevel == 5:
                 self._players[enemyObj].stopTime = 30
-            self._changeList.append(self.makeSkillHitJson('longAttack', enemyId))
+            self._changeList.append(self.makeSkillHitJson('longAttack', playerId,enemyId))
         player.longAttackCasting = -1
         player.longAttackEnemy = -1
 
@@ -528,7 +541,7 @@ class GameMain:
             if self._players.get(objId) is not None and objId != playerId and self._players[objId].shieldTime == 0 \
                     and self._players[objId].shieldLevel < 5:
                 self.healthChange(objId, -damage)
-                self._changeList.append(self.makeSkillHitJson('shortAttack', objId))
+                self._changeList.append(self.makeSkillHitJson('shortAttack', playerId,objId))
         if skillLevel == 5:
             # self._players[playerId].shieldTime = 30
             self._players[playerId].shieldLevel = 35
@@ -621,3 +634,12 @@ class GameMain:
     def gameEnd(self, winnerId: int):
         self._gameEnd = True
         self._changeList.append('{"info":"end","time":%d,"ai_id":%d}' % (self._time, winnerId))
+
+    def testGameEnd(self,score:int):
+        self._gameEnd=True
+        if score>0:
+            aiId=0
+        else:
+            aiId=1
+        self._changeList.append('{"info":"end","time":%d,"ai_id":%d,"score":%d}' % (self._time, aiId,score))
+
