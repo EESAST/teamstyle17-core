@@ -180,18 +180,20 @@ class GameMain:
         self._changeList = []
         self._changedPlayer = set()
         if self._time == 5000:
-            tempid = 0
-            tempmax = 0
+            tempId = 0
+            tempMax = 0
             for playerId in self._players:
                 if self._players[playerId].aiId == -2:
                     continue
-                if self._players[playerId].health > tempmax:
-                    tempmax = self._players[playerId].health
-                    tempid = self._players[playerId].aiId
-            self.gameEnd(tempid)
+                if self._players[playerId].health > tempMax:
+                    tempMax = self._players[playerId].health
+                    tempId = self._players[playerId].aiId
+            self.gameEnd(tempId)
 
         # 1、结算技能效果
-        for playerId in self._castSkills:
+        for playerId in self._rand.shuffle(list(self._castSkills.keys())):
+            if self._players.get(playerId) is None:
+                continue
             skillInfo = self._castSkills[playerId]
             skillName = skillInfo.name
             if skillName == 'shortAttack':
@@ -217,15 +219,17 @@ class GameMain:
 
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
         for playerId, player in self._players.items():
-            r = self._scene.getObject(playerId).radius
             if playerId == 0:
                 player.speed = tuple(self._rand.randIn(10 * 1000000) / 1000000 for _ in range(3))
             if player.stopTime == 0:
                 self.playerMove(playerId)
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
-        for playerId, player in self._players.items():
+        for playerId in self._rand.shuffle(list(self._players.keys())):
             if playerId == 0:
+                continue
+            player = self._players.get(playerId)
+            if player is None:
                 continue
             sphere = self._scene.getObject(playerId)
             # 玩家（包括目标生物）可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
