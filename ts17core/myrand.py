@@ -27,6 +27,8 @@ class MyRand:
     # 将一个List随机打乱
     def shuffle(self, ls: list) -> list:
         n = len(ls)
+        ret = ls[:]
         for i in range(n - 1):
-            xchg = self.randIn(n - i) + i
-            ls[i], ls[xchg] = ls[xchg], ls[i]
+            j = self.randIn(n - i) + i
+            ret[i], ret[j] = ret[j], ret[i]
+        return ret
