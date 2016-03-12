@@ -133,15 +133,15 @@ class GameMain:
         newStatus.aiId = aiId
         self._players[playerId] = newStatus
 
-    def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int):
+    def makeChangeJson(self, playerId: int, aiId: int, pos: tuple, r: int,nutrientMove=0):
         if self._objects.get(playerId) is not None:
             objType = self._objects[playerId].type
         elif self._players.get(playerId) is not None:
             objType = "player"
         else:
             objType = None
-        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f}' \
-               % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r)
+        return '{"info":"object","time":%d,"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"nutrientmove":%d}' \
+               % (self._time, playerId, aiId, objType, pos[0], pos[1], pos[2], r,nutrientMove)
 
     def makeDeleteJson(self, objId: int):
         return '{"info":"delete","time":%d,"id":%d}' % (self._time, objId)
@@ -239,20 +239,18 @@ class GameMain:
                 self._changeList.append(self.makeDeleteJson(eatenId))
                 eatenPlayer = self._players.get(eatenId)
                 if eatenPlayer is not None:
-                    if eatenPlayer.shieldTime == 0 or (
-                                    eatenPlayer.skillsLV["shield"] < 4 and eatenPlayer.shiledLevel < 4):
-                        self.healthChange(playerId, eatenPlayer.health // 2)
-                        self.healthChange(eatenId, -eatenPlayer.health)
-                        if eatenId == 0:
-                            self.gameEnd(playerId)
+                    if (eatenPlayer.shieldTime == 0 or
+                                    eatenPlayer.skillsLV["shield"] < 4) and eatenPlayer.shieldLevel < 5:
+                        #self.healthChange(playerId, eatenPlayer.health // 2)
+                        #self.healthChange(eatenId, -eatenPlayer.health)
+                        self.gameEnd(playerId)
                     continue
                 objType = self._objects[eatenId].type
                 if objType == "food":
-                    self.healthChange(playerId, 10)
+                    self.healthChange(playerId, 40)
                     self.objectDelete(eatenId)
                     self._foodCount -= 1
                 elif objType == "nutrient":
-                    self.healthChange(playerId, self._rand.rand() % 301 + 200)
                     player.ability += self._rand.rand() % 5 + 1
                     self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
@@ -288,11 +286,10 @@ class GameMain:
             if self._foodCount > 1000:
                 break
 
+        spikenum=0
         if self._time % 100 == 0:
-            spikenum = 1
-        else:
-            spikenum = 0
-        for _ in range(foodPerTick):
+            spikenum += 1
+        for _ in range(spikenum):
             if self._spikeCount >= 10:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
@@ -354,7 +351,7 @@ class GameMain:
             raise ValueError('Player %d does not exist' % playerId)
         player.healthChange(delta)
         newHealth = player.health
-        if newHealth <= 0:
+        if newHealth < player.maxHealth//4:
             self.playerDie(playerId)
         else:
             newRadius = (newHealth ** (1 / 3)) * 100
@@ -367,7 +364,7 @@ class GameMain:
         player = self._players.get(playerId)
         if player is None:
             raise ValueError('Player %d does not exist' % playerId)
-        if player.health > 0:
+        if player.health > player.maxHealth//4:
             raise ValueError('This player is still alive')
         self._players.pop(playerId)
         self._scene.delete(playerId)
@@ -464,7 +461,7 @@ class GameMain:
         return '{"players":[%s]}' % ','.join(infoList)
 
     def setSpeed(self, playerId: int, newSpeed: tuple):
-        speedLimit = 100
+        speedLimit = self._players[playerId].speedLimit
         newSpeedLength = sum(x ** 2 for x in newSpeed) ** 0.5
         if newSpeedLength > speedLimit:
             newSpeed = tuple(x * speedLimit / newSpeedLength for x in newSpeed)
@@ -562,8 +559,11 @@ class GameMain:
         skillLevel = player.skillsLV['dash']
         if player is None:
             raise ValueError("Player %d does not exist" % playerId)
-        player.dashTime = 10
+        player.dashTime = 40
+        if skillLevel==5:
+            player.dashTime+=40
         player.speedLimit += skillLevel * 20
+        self.healthChange(playerId, -40)
         player.skillsCD['dash'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'dash'))
 
@@ -572,7 +572,7 @@ class GameMain:
         pos = tuple(self._rand.randIn(self._mapSize - 2 * sphere.radius) + sphere.radius for _ in range(3))
         newSphere = scene.Sphere(pos, sphere.radius)
         self._scene.modify(newSphere, playerId)
-        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos, newSphere.radius))
+        self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos, newSphere.radius,1))
 
     # 提升视野，参数为使用者Id
     def visionUp(self, playerId: int):
