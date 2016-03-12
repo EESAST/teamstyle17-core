@@ -13,7 +13,7 @@ class Interface:
         if command["action"] != "init" and not self.game.isBelong(command["id"], command["ai_id"]):
             raise ValueError('Player %d does not belong to AI %d' % (command["id"], command["ai_id"]))
         if command["action"] == "init":
-            self.game = gamemain.GameMain(command["seed"], command["player"], self.callback)
+            self.game = gamemain.GameMain(command["seed"], command["player"],command["type"], self.callback)
         elif command["action"] == "move":
             self.game.setSpeed(command["id"], (command["x"], command["y"], command["z"]))
         elif command["action"] == "use_skill":
