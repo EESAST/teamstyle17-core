@@ -105,7 +105,7 @@ class GameMain:
         self._nutrientFlushPos = []
         for x in range(8):
             temp = x
-            for _ in range(10):
+            for _ in range(5):
                 self._nutrientFlushPos.append(tuple(
                     self._rand.randIn(self._mapSize // 2) + ((temp & (1 << y)) >> y) * self._mapSize // 2 for y in
                     range(3)))
@@ -228,8 +228,6 @@ class GameMain:
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
         for playerId in self._rand.shuffle(list(self._players.keys())):
-            if playerId == 0:
-                continue
             player = self._players.get(playerId)
             if player is None:
                 continue
@@ -245,7 +243,7 @@ class GameMain:
                                     eatenPlayer.skillsLV["shield"] < 4) and eatenPlayer.shieldLevel < 5:
                         #self.healthChange(playerId, eatenPlayer.health // 2)
                         #self.healthChange(eatenId, -eatenPlayer.health)
-                        self.gameEnd(playerId)
+                        self.gameEnd(self._players[playerId].aiId)
                     continue
                 objType = self._objects[eatenId].type
                 if objType == "food":
@@ -256,6 +254,8 @@ class GameMain:
                     player.ability += self._rand.rand() % 5 + 1
                     self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
+            if playerId==0 :
+                continue
             # 玩家接触到的物体对其产生效果，包括受到刺球伤害及子弹伤害
             touchList = self._scene.intersect(sphere, False)
             for touchedId in touchList:
@@ -273,7 +273,7 @@ class GameMain:
         # 4、随机产生新的食物等,暂且每回合1个食饵，且上限为1000个。每隔100-110回合刷新一个营养源;
         # 食饵ID为1000000+食物编号， 营养源ID为2000000+营养源位置编号
         if self._time == 0:
-            foodPerTick = 300
+            foodPerTick = 150
         else:
             foodPerTick = 10
         for _ in range(foodPerTick):
@@ -285,7 +285,7 @@ class GameMain:
             self._foodCountAll += 1
             self._foodCount += 1
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
-            if self._foodCount > 500:
+            if self._foodCount > 300:
                 break
 
         spikenum=0
