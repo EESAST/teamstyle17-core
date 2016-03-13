@@ -514,7 +514,7 @@ class GameMain:
             raise ValueError("Player %d is not completing a long attack cast" % playerId)
         skillLevel = player.skillsLV['longAttack']
         attackRange = 3000 + 500 * skillLevel
-        if self._players[enemyId].shieldTime == 0 and self._players[enemyId].shieldLevel < 5:
+        if self._players[enemyId].shieldTime > 0 or self._players[enemyId].shieldLevel >= 5:
             player.longAttackCasting = -1
             player.longAttackEnemy = -1
             return
@@ -522,7 +522,7 @@ class GameMain:
             damage = 100 * skillLevel
             self.healthChange(enemyId, -damage)
             if skillLevel == 5:
-                self._players[enemyObj].stopTime = 30
+                self._players[enemyId].stopTime = 30
             self._changeList.append(self.makeSkillHitJson('longAttack', playerId,enemyId))
         player.longAttackCasting = -1
         player.longAttackEnemy = -1
