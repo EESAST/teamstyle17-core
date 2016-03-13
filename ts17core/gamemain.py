@@ -406,12 +406,13 @@ class GameMain:
         speed = self._players[playerId].speed
         newPos = tuple(oldPos[i] + speed[i] for i in range(3))
         if self.outsideMap(newPos, r):
-            newSpeed = list(speed)
+            newPos2 = list(newPos)
             for i in range(3):
-                if newPos[i] + r > self._mapSize or newPos[i] - r < 0:
-                    newSpeed[i] = 0
-            self._players[playerId].speed = tuple(newSpeed)
-            newPos = oldPos
+                if newPos2[i] + r > self._mapSize:
+                    newPos2[i]=self._mapSize-r
+                elif newPos[i] - r < 0:
+                    newPos2[i] = r
+            newPos = tuple(newPos2)
         newSphere = scene.Sphere(newPos, r)
         self._scene.modify(newSphere, playerId)
         self._changeList.append(self.makeChangeJson(
