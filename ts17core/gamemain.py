@@ -243,7 +243,10 @@ class GameMain:
                                     eatenPlayer.skillsLV["shield"] < 4) and eatenPlayer.shieldLevel < 5:
                         #self.healthChange(playerId, eatenPlayer.health // 2)
                         #self.healthChange(eatenId, -eatenPlayer.health)
-                        self.gameEnd(self._players[playerId].aiId)
+                        if player.aiId==-2:
+                            self.gameEnd(1-eatenPlayer.aiId)
+                        else:
+                            self.gameEnd(self._players[playerId].aiId)
                     continue
                 objType = self._objects[eatenId].type
                 if objType == "food":
