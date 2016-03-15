@@ -33,6 +33,8 @@ class PlayerStatus:
         self.stopTime = 0
         # 历史最大血量
         self.maxHealth = self.health
+        #因营养源传送获得的一回合不受刺球影响状态
+        self.nutrientMove=0
 
     def healthChange(self, delta):
         self.health += delta
@@ -116,7 +118,7 @@ class GameMain:
         self._changedPlayer = set()
         # 增加玩家
         self.addNewPlayer(0, -2, tuple(self._mapSize // 2 for _ in range(3)), 2000)
-        pos1 = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
+        pos1 = tuple(self._rand.randIn(self._mapSize-2000)+1000 for _ in range(3))
         pos2 = tuple(self._mapSize - pos1[x] for x in range(3))
         self.addNewPlayer(1, 0, pos1, 1000)
         self.addNewPlayer(2, 1, pos2, 1000)
@@ -190,7 +192,7 @@ class GameMain:
                 if self._players[playerId].health > tempMax:
                     tempMax = self._players[playerId].health
                     tempId = self._players[playerId].aiId
-            self.gameEnd(tempId)
+            self.gameEnd(tempId,1)
 
         # 1、结算技能效果
         for playerId in self._rand.shuffle(list(self._castSkills.keys())):
@@ -244,9 +246,9 @@ class GameMain:
                         #self.healthChange(playerId, eatenPlayer.health // 2)
                         #self.healthChange(eatenId, -eatenPlayer.health)
                         if player.aiId==-2:
-                            self.gameEnd(1-eatenPlayer.aiId)
+                            self.gameEnd(1-eatenPlayer.aiId,2)
                         else:
-                            self.gameEnd(self._players[playerId].aiId)
+                            self.gameEnd(self._players[playerId].aiId,3)
                     continue
                 objType = self._objects[eatenId].type
                 if objType == "food":
@@ -258,6 +260,8 @@ class GameMain:
                     self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
             if playerId==0 :
+                continue
+            if self._players[playerId].nutrientMove>0:
                 continue
             # 玩家接触到的物体对其产生效果，包括受到刺球伤害及子弹伤害
             touchList = self._scene.intersect(sphere, False)
@@ -280,6 +284,8 @@ class GameMain:
         else:
             foodPerTick = 10
         for _ in range(foodPerTick):
+            if self._foodCount > 300:
+                break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             food = scene.Sphere(center)
             foodId = 1000000 + self._foodCountAll
@@ -288,8 +294,7 @@ class GameMain:
             self._foodCountAll += 1
             self._foodCount += 1
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
-            if self._foodCount > 300:
-                break
+
 
         spikenum=0
         if self._time % 100 == 0:
@@ -339,6 +344,8 @@ class GameMain:
                 player.longAttackCasting -= 1
             if player.dashTime > 0:
                 player.dashTime -= 1
+            if player.nutrientMove>0:
+                player.nutrientMove-=1
             for skillName in self._players[playerId].skillsCD.keys():
                 if player.skillsCD[skillName] > 0:
                     player.skillsCD[skillName] -= 1
@@ -391,7 +398,7 @@ class GameMain:
             if player.aiId >= 0:
                 aliveAI.add(player.aiId)
         if len(aliveAI) == 1:
-            self.gameEnd(aliveAI.pop())
+            self.gameEnd(aliveAI.pop(),4)
 
     # 判断物体应消失后即应调用该函数，由该函数负责所有后续处理工作
     def objectDelete(self, objId: int):
@@ -585,10 +592,16 @@ class GameMain:
         self._changeList.append(self.makeSkillCastJson(playerId, 'dash'))
 
     def nutrientMove(self, playerId: int):
+        if playerId==0:
+            return
         sphere = self._scene.getObject(playerId)
+        bosssphere=self._scene.getObject(0)
         pos = tuple(self._rand.randIn(self._mapSize - 2 * sphere.radius) + sphere.radius for _ in range(3))
+        while self.dis(pos,bosssphere.center)<bosssphere.radius:
+            pos = tuple(self._rand.randIn(self._mapSize - 2 * sphere.radius) + sphere.radius for _ in range(3))
         newSphere = scene.Sphere(pos, sphere.radius)
         self._scene.modify(newSphere, playerId)
+        self._players[playerId].nutrientMove=2
         self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos, newSphere.radius,1))
 
     # 提升视野，参数为使用者Id
@@ -635,9 +648,9 @@ class GameMain:
                 if (skillName == "healthUp"):
                     self.healthUp(playerId)
 
-    def gameEnd(self, winnerId: int):
+    def gameEnd(self, winnerId: int,why:int):
         self._gameEnd = True
-        self._changeList.append('{"info":"end","time":%d,"ai_id":%d}' % (self._time, winnerId))
+        self._changeList.append('{"info":"end","time":%d,"ai_id":%d,"why":%d}' % (self._time, winnerId,why))
 
     def testGameEnd(self,score:int):
         self._gameEnd=True
