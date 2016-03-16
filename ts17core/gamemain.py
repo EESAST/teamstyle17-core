@@ -354,7 +354,7 @@ class GameMain:
                 if player.skillsCD[skillName] > 0:
                     player.skillsCD[skillName] -= 1
 
-        for playerId in self._changedPlayer:
+        for playerId in self._players:
             if self._players.get(playerId) is not None:  # 确保只生成未死亡的玩家的变化信息
                 self._changeList.append(self.makePlayerJson(playerId))
 
