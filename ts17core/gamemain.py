@@ -76,7 +76,7 @@ class GameMain:
         # 游戏结束标志
         self._gameEnd = False
         #0表示正常比赛，非零数X表示测试赛X
-        self.gameType=type
+        self._gameType=type
         # 地图大小（地图三维坐标的范围均为[0,_mapSize]）
         self._mapSize = 20000
         # 当前时刻，以tick为单位，是非负整数
@@ -119,6 +119,8 @@ class GameMain:
         # 增加玩家
         self.addNewPlayer(0, -2, tuple(self._mapSize // 2 for _ in range(3)), 2000)
         pos1 = tuple(self._rand.randIn(self._mapSize-2000)+1000 for _ in range(3))
+        while self.dis(pos1,tuple(self._mapSize//2 for _ in range(3)))<2000:
+            pos1 = tuple(self._rand.randIn(self._mapSize-2000)+1000 for _ in range(3))
         pos2 = tuple(self._mapSize - pos1[x] for x in range(3))
         self.addNewPlayer(1, 0, pos1, 1000)
         self.addNewPlayer(2, 1, pos2, 1000)
@@ -303,6 +305,8 @@ class GameMain:
             if self._spikeCount >= 10:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
+            while self.inplayer(center)==False:
+                center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             spike = scene.Sphere(center)
             spikeId = 2001000 + self._spikeCountAll
             self._objects[spikeId] = ObjectStatus("spike")
@@ -355,9 +359,9 @@ class GameMain:
                 self._changeList.append(self.makePlayerJson(playerId))
 
         #判断是否为测试赛
-        if self.gameType!=0:
+        if self._gameType!=0:
             #测试赛1，如果选手移动则成功
-            if (self.gameType==1):
+            if (self._gameType==1):
                 for playerId in self._players:
                     if (self._players[playerId].aiId!=0):
                         continue
@@ -568,6 +572,15 @@ class GameMain:
     def dis(self, pos1: tuple, pos2: tuple):
         return sum((pos1[i] - pos2[i]) ** 2 for i in range(3)) ** 0.5
 
+    def inplayer(self,pos:tuple):
+        for playerId in self._players:
+            if self._players[playerId].aiId==-2:
+                continue
+            sphere=self._scene.getObject(playerId)
+            if self.dis(pos,sphere.center)<sphere.radius+100:
+                return False
+        return True
+
     # 判断某物体是否越界，参数为物体球心及半径
     def outsideMap(self, pos: tuple, radius):
         if pos[0] - radius < 0 or pos[0] + radius > self._mapSize \
@@ -649,6 +662,10 @@ class GameMain:
                     self.healthUp(playerId)
 
     def gameEnd(self, winnerId: int,why:int):
+        if self._gameEnd:
+            return
+        if self._gameType!=0:
+            return
         self._gameEnd = True
         self._changeList.append('{"info":"end","time":%d,"ai_id":%d,"why":%d}' % (self._time, winnerId,why))
 
