@@ -226,7 +226,7 @@ class GameMain:
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
         for playerId, player in self._players.items():
             if playerId == 0:
-                player.speed = tuple(self._rand.randIn(10 * 1000000) / 1000000 for _ in range(3))
+                player.speed = tuple((self._rand.randIn(20 * 1000000) / 1000000)-10 for _ in range(3))
             if player.stopTime == 0:
                 self.playerMove(playerId)
 
@@ -307,7 +307,7 @@ class GameMain:
             if self._spikeCount >= 10:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
-            while self.inplayer(center)==False:
+            while self.inplayer(center):
                 center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             spike = scene.Sphere(center)
             spikeId = 2001000 + self._spikeCountAll
@@ -580,8 +580,8 @@ class GameMain:
                 continue
             sphere=self._scene.getObject(playerId)
             if self.dis(pos,sphere.center)<sphere.radius+100:
-                return False
-        return True
+                return True
+        return False
 
     # 判断某物体是否越界，参数为物体球心及半径
     def outsideMap(self, pos: tuple, radius):
