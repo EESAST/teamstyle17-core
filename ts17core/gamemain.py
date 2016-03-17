@@ -240,13 +240,14 @@ class GameMain:
             insideList = self._scene.intersect(sphere, True)
             eatableList = [objId for objId in insideList if 1.2 * self._scene._objs[objId].radius < sphere.radius]
             for eatenId in eatableList:
-                self._changeList.append(self.makeDeleteJson(eatenId))
+
                 eatenPlayer = self._players.get(eatenId)
                 if eatenPlayer is not None:
                     if (eatenPlayer.shieldTime == 0 or
                                     eatenPlayer.skillsLV["shield"] < 4) and eatenPlayer.shieldLevel < 5:
                         #self.healthChange(playerId, eatenPlayer.health // 2)
                         #self.healthChange(eatenId, -eatenPlayer.health)
+                        self._changeList.append(self.makeDeleteJson(eatenId))
                         if player.aiId==-2:
                             self.gameEnd(1-eatenPlayer.aiId,2)
                         else:
@@ -254,10 +255,12 @@ class GameMain:
                     continue
                 objType = self._objects[eatenId].type
                 if objType == "food":
+                    self._changeList.append(self.makeDeleteJson(eatenId))
                     self.healthChange(playerId, 40)
                     self.objectDelete(eatenId)
                     self._foodCount -= 1
                 elif objType == "nutrient":
+                    self._changeList.append(self.makeDeleteJson(eatenId))
                     player.ability += self._rand.rand() % 5 + 1
                     self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
