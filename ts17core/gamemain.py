@@ -263,8 +263,7 @@ class GameMain:
                     self.objectDelete(eatenId)
             if playerId==0 :
                 continue
-            if self._players[playerId].nutrientMove>0:
-                continue
+
             # 玩家接触到的物体对其产生效果，包括受到刺球伤害及子弹伤害
             touchList = self._scene.intersect(sphere, False)
             for touchedId in touchList:
@@ -272,6 +271,9 @@ class GameMain:
                     continue
                 objType = self._objects[touchedId].type
                 if objType == "spike":
+                    if self._players[playerId].nutrientMove>0:
+                        self.objectDelete(touchedId)
+                        continue
                     if self._players[playerId].shieldTime == 0 or (
                                     self._players[playerId].skillsLV["shield"] < 5 and self._players[
                                 playerId].shieldLevel < 5):
