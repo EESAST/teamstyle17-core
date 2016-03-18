@@ -464,7 +464,7 @@ class GameMain:
                 nutrientId = 4000000 + i
                 objectDict[nutrientId] = makeObjectJson(nutrientId, -2, 'source', pos, 0)
         else:
-            visionSpheres = [scene.Sphere(self._scene.getObject(playerId).center, self._players[playerId].vision)
+            visionSpheres = [scene.Sphere(self._scene.getObject(playerId).center, self._players[playerId].vision+self._scene.getObject(playerId))
                              for playerId in self._players.keys() if self._players[playerId].aiId == aiId]
             visibleLists = [self._scene.intersect(vs, False) for vs in visionSpheres]
             for objectId in [i for ls in visibleLists for i in ls]:
@@ -537,7 +537,7 @@ class GameMain:
             player.longAttackCasting = -1
             player.longAttackEnemy = -1
             return
-        if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius < attackRange:
+        if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius-self._scene.getObject(playerId).radius < attackRange:
             damage = 100 * skillLevel
             self.healthChange(enemyId, -damage)
             if skillLevel == 5:
@@ -549,13 +549,13 @@ class GameMain:
     # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['shortAttack']
-        damage = 1000 + 200 * (skillLevel - 1)
-        attackRange = 100 + 10 * (skillLevel - 1)
+        damage = 500 + 200 * (skillLevel - 1)
+        attackRange = 1000 + 200 * (skillLevel - 1)
         self.healthChange(playerId, -50)
         self._players[playerId].skillsCD['shortAttack'] = 80
         self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack'))
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
-        virtualSphere = scene.Sphere(self.getCenter(playerId), attackRange)
+        virtualSphere = scene.Sphere(self.getCenter(playerId), attackRange+self._scene.getObject(playerId).radius)
         for objId in self._scene.intersect(virtualSphere):
             if self._players.get(objId) is not None and objId != playerId and self._players[objId].shieldTime == 0 \
                     and self._players[objId].shieldLevel < 5:
