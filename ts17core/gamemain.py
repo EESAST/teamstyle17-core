@@ -532,7 +532,7 @@ class GameMain:
         if player.longAttackCasting != 0:
             raise ValueError("Player %d is not completing a long attack cast" % playerId)
         skillLevel = player.skillsLV['longAttack']
-        attackRange = 3000 + 500 * skillLevel
+        attackRange = 2000 + 500 * skillLevel
         if self._players[enemyId].shieldTime > 0 or self._players[enemyId].shieldLevel >= 5:
             player.longAttackCasting = -1
             player.longAttackEnemy = -1
