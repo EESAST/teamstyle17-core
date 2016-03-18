@@ -471,7 +471,7 @@ class GameMain:
                 nutrientId = 4000000 + i
                 objectDict[nutrientId] = makeObjectJson(nutrientId, -2, 'source', pos, 0)
         else:
-            visionSpheres = [scene.Sphere(self._scene.getObject(playerId).center, self._players[playerId].vision+self._scene.getObject(playerId))
+            visionSpheres = [scene.Sphere(self._scene.getObject(playerId).center, self._players[playerId].vision+self._scene.getObject(playerId).radius)
                              for playerId in self._players.keys() if self._players[playerId].aiId == aiId]
             visibleLists = [self._scene.intersect(vs, False) for vs in visionSpheres]
             for objectId in [i for ls in visibleLists for i in ls]:
