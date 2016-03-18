@@ -94,7 +94,7 @@ class GameMain:
         # 随机数生成器，所有随机事件必须从这里获取随机数
         self._rand = myrand.MyRand(seed)
         # 技能基础价格
-        self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'dash': 2, 'visionUp': 2, 'healthUp': 1}
+        self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'dash': 1, 'visionUp': 2, 'healthUp': 1}
         # 食物编号
         self._foodCount = 0
         self._foodCountAll = 0
