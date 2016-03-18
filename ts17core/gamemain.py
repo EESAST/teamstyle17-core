@@ -260,7 +260,7 @@ class GameMain:
                     self._foodCount -= 1
                 elif objType == "nutrient":
                     self._changeList.append(self.makeDeleteJson(eatenId))
-                    player.ability += self._rand.rand() % 5 + 1
+                    player.ability += self._rand.rand() % 3 + 3
                     self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
             if playerId==0 :
@@ -298,8 +298,15 @@ class GameMain:
             self._objects[foodId] = ObjectStatus("food")
             self._scene.insert(food, foodId)
             self._foodCountAll += 1
-            self._foodCount += 1
             self._changeList.append(self.makeChangeJson(foodId, -2, center, 0))
+            center2 = tuple(self._mapSize-x for x in center)
+            food = scene.Sphere(center2)
+            foodId = 1000000 + self._foodCountAll
+            self._objects[foodId] = ObjectStatus("food")
+            self._scene.insert(food, foodId)
+            self._foodCountAll += 1
+            self._foodCount += 2
+            self._changeList.append(self.makeChangeJson(foodId, -2, center2, 0))
 
 
         spikenum=0
