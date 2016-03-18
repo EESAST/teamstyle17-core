@@ -240,7 +240,6 @@ class GameMain:
             insideList = self._scene.intersect(sphere, True)
             eatableList = [objId for objId in insideList if 1.2 * self._scene._objs[objId].radius < sphere.radius]
             for eatenId in eatableList:
-
                 eatenPlayer = self._players.get(eatenId)
                 if eatenPlayer is not None:
                     if (eatenPlayer.shieldTime == 0 or
@@ -569,7 +568,7 @@ class GameMain:
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['shield']
-        self._players[playerId].shieldTime = 81 + 20 * skillLevel
+        self._players[playerId].shieldTime = 15 + 15 * skillLevel
         self._players[playerId].skillsCD['shield'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'shield'))
 
