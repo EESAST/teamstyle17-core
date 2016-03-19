@@ -276,9 +276,9 @@ class GameMain:
                     if self._players[playerId].nutrientMove>0:
                         self.objectDelete(touchedId)
                         continue
-                    if self._players[playerId].shieldTime == 0 or (
-                                    self._players[playerId].skillsLV["shield"] < 5 and self._players[
-                                playerId].shieldLevel < 5):
+                    if (self._players[playerId].shieldTime == 0 or
+                                    self._players[playerId].skillsLV["shield"] < 5) and self._players[
+                                playerId].shieldLevel < 5:
                         damage = self._players[playerId].health // 3
                         self.healthChange(playerId, -damage)
                         self.objectDelete(touchedId)
@@ -557,7 +557,11 @@ class GameMain:
     def shortAttack(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['shortAttack']
         damage = 500 + 200 * (skillLevel - 1)
-        attackRange = 1000 + 200 * (skillLevel - 1)
+        if 1<skillLevel<5:
+            damage+=100
+        attackRange = 1100 + 300 * skillLevel
+        if skillLevel==5:
+            attackRange-=100
         self.healthChange(playerId, -50)
         self._players[playerId].skillsCD['shortAttack'] = 80
         self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack'))
@@ -575,7 +579,10 @@ class GameMain:
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['shield']
-        self._players[playerId].shieldTime = 15 + 15 * skillLevel
+        if skillLevel<3:
+            self._players[playerId].shieldTime = 20+10*skillLevel
+        else:
+            self._players[playerId].shieldTime = 50
         self._players[playerId].skillsCD['shield'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'shield'))
 
