@@ -518,7 +518,14 @@ class GameMain:
 
     def setSpeed(self, playerId: int, newSpeed: tuple):
         speedLimit = self._players[playerId].speedLimit
-        newSpeedLength = sum(x ** 2 for x in newSpeed) ** 0.5
+        temp=[]
+        for x in newSpeed:
+            if -20000<=x<=20000:
+                temp.append(x)
+            else:
+                temp.append(0)
+        newSpeed=tuple(temp)
+        newSpeedLength = sum(x ** 2 for x in newSpeed ) ** 0.5
         if newSpeedLength > speedLimit:
             newSpeed = tuple(x * speedLimit / newSpeedLength for x in newSpeed)
         self._players[playerId].speed = newSpeed
