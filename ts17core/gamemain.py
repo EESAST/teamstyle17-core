@@ -520,9 +520,9 @@ class GameMain:
     def longAttackSet(self, playerId: int, enemyId: int):
         player = self._players.get(playerId)
         if player is None:
-            raise ValueError("Player %d does not exist" % playerId)
+            return
         if self._players.get(enemyId) is None:
-            raise ValueError("Enemy %d does not exist" % enemyId)
+            return
         self.healthChange(playerId, -10)
         player.skillsCD['longAttack'] = 80
         player.longAttackCasting = 10
@@ -535,9 +535,9 @@ class GameMain:
         enemyId = player.longAttackEnemy
         enemyObj = self._scene.getObject(enemyId)
         if player is None:
-            raise ValueError("Player %d does not exist" % playerId)
+            return
         if player.longAttackCasting != 0:
-            raise ValueError("Player %d is not completing a long attack cast" % playerId)
+            return
         skillLevel = player.skillsLV['longAttack']
         attackRange = 2000 + 500 * skillLevel
         if self._players[enemyId].shieldTime > 0 or self._players[enemyId].shieldLevel >= 5:
@@ -568,8 +568,8 @@ class GameMain:
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
         virtualSphere = scene.Sphere(self.getCenter(playerId), attackRange+self._scene.getObject(playerId).radius)
         for objId in self._scene.intersect(virtualSphere):
-            if self._players.get(objId) is not None and objId != playerId and self._players[objId].shieldTime == 0 \
-                    and self._players[objId].shieldLevel < 5:
+            if self._players.get(objId) is not None and objId != playerId and ((self._players[objId].shieldTime == 0 \
+                    and self._players[objId].shieldLevel < 5)or(skillLevel>=3)):
                 self.healthChange(objId, -damage)
                 self._changeList.append(self.makeSkillHitJson('shortAttack', playerId,objId))
         if skillLevel == 5:
