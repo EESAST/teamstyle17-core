@@ -35,6 +35,8 @@ class PlayerStatus:
         self.maxHealth = self.health
         #因营养源传送获得的一回合不受刺球影响状态
         self.nutrientMove=0
+        #是否死亡
+        self.death=False
 
     def healthChange(self, delta):
         self.health += delta
@@ -200,6 +202,8 @@ class GameMain:
         for playerId in self._rand.shuffle(list(self._castSkills.keys())):
             if self._players.get(playerId) is None:
                 continue
+            if self._players[playerId].death:
+                continue
             skillInfo = self._castSkills[playerId]
             skillName = skillInfo.name
             if skillName == 'shortAttack':
@@ -215,6 +219,8 @@ class GameMain:
             elif skillName == 'healthUp':
                 self.healthUp(playerId)
         for playerId, player in self._players.items():
+            if player.death:
+                continue
             # 远程攻击蓄力到时间后结算远程攻击效果
             if player.longAttackCasting == 0:
                 self.longAttackDone(playerId)
@@ -225,6 +231,8 @@ class GameMain:
 
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
         for playerId, player in self._players.items():
+            if player.death:
+                continue
             if playerId == 0:
                 player.speed = tuple((self._rand.randIn(20 * 1000000) / 1000000)-10 for _ in range(3))
             if player.stopTime == 0:
@@ -234,6 +242,8 @@ class GameMain:
         for playerId in self._rand.shuffle(list(self._players.keys())):
             player = self._players.get(playerId)
             if player is None:
+                continue
+            if player.death:
                 continue
             sphere = self._scene.getObject(playerId)
             # 玩家（包括目标生物）可食用的物体对其产生效果，包括食用食饵、营养源、目标生物、以及其他玩家AI
@@ -349,6 +359,8 @@ class GameMain:
         # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
         self._time += 1
         for playerId, player in self._players.items():
+            if player.death:
+                continue
             if player.shieldTime > 0:
                 player.shieldTime -= 1
             if player.shieldLevel > 0:
@@ -366,7 +378,7 @@ class GameMain:
                     player.skillsCD[skillName] -= 1
 
         for playerId in self._players:
-            if self._players.get(playerId) is not None:  # 确保只生成未死亡的玩家的变化信息
+            if self._players.death==False:  # 确保只生成未死亡的玩家的变化信息
                 self._changeList.append(self.makePlayerJson(playerId))
 
         #判断是否为测试赛
@@ -404,13 +416,14 @@ class GameMain:
             raise ValueError('Player %d does not exist' % playerId)
         if player.health > player.maxHealth//4:
             raise ValueError('This player is still alive')
-        self._players.pop(playerId)
+        #self._players.pop(playerId)
+        self._players[playerId].death=True
         self._scene.delete(playerId)
         self._changeList.append(self.makeDeleteJson(playerId))
         # 判断是否只有一个AI有玩家存活，是则游戏结束，该AI获胜
         aliveAI = set()
         for player in self._players.values():
-            if player.aiId >= 0:
+            if player.aiId >= 0 and player.death==False:
                 aliveAI.add(player.aiId)
         if len(aliveAI) == 1:
             self.gameEnd(aliveAI.pop(),4)
@@ -458,6 +471,8 @@ class GameMain:
         objectDict = {}
         if aiId == -1:
             for playerId in self._players:
+                if self._players[playerId].death:
+                    continue
                 sphere = self._scene.getObject(playerId)
                 objectDict[playerId] = \
                     makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius,
@@ -496,6 +511,8 @@ class GameMain:
         for playerId, player in self._players.items():
             if aiId != -1 and player.aiId != aiId:
                 continue
+            if player.death:
+                continue
             infoList.append(self.makePlayerJson(playerId))
         return '{"players":[%s]}' % ','.join(infoList)
 
@@ -523,6 +540,8 @@ class GameMain:
             return
         if self._players.get(enemyId) is None:
             return
+        if player.death or self._players[enemyId].death:
+            return
         self.healthChange(playerId, -10)
         player.skillsCD['longAttack'] = 80
         player.longAttackCasting = 10
@@ -533,6 +552,14 @@ class GameMain:
     def longAttackDone(self, playerId: int):
         player = self._players.get(playerId)
         enemyId = player.longAttackEnemy
+        if self._players[enemyId].death:
+            player.longAttackCasting = -1
+            player.longAttackEnemy = -1
+            return
+        if player.death:
+            player.longAttackCasting = -1
+            player.longAttackEnemy = -1
+            return
         enemyObj = self._scene.getObject(enemyId)
         if player is None:
             return
@@ -555,6 +582,8 @@ class GameMain:
 
     # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
+        if self._players[playerId].death:
+            return
         skillLevel = self._players[playerId].skillsLV['shortAttack']
         damage = 500 + 200 * (skillLevel - 1)
         if 1<skillLevel<5:
