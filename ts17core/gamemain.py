@@ -378,7 +378,7 @@ class GameMain:
                     player.skillsCD[skillName] -= 1
 
         for playerId in self._players:
-            if self._players.death==False:  # 确保只生成未死亡的玩家的变化信息
+            if self._players[playerId].death==False:  # 确保只生成未死亡的玩家的变化信息
                 self._changeList.append(self.makePlayerJson(playerId))
 
         #判断是否为测试赛
