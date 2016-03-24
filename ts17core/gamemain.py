@@ -520,7 +520,7 @@ class GameMain:
         speedLimit = self._players[playerId].speedLimit
         temp=[]
         for x in newSpeed:
-            if -20000<=x<=20000:
+            if -2000000<=x<=2000000:
                 temp.append(x)
             else:
                 temp.append(0)
@@ -662,10 +662,12 @@ class GameMain:
         if playerId==0:
             return
         sphere = self._scene.getObject(playerId)
-        bosssphere=self._scene.getObject(0)
+        if self._players[0].death==False:
+            bosssphere=self._scene.getObject(0)
         pos = tuple(self._rand.randIn(self._mapSize - 2 * sphere.radius) + sphere.radius for _ in range(3))
-        while self.dis(pos,bosssphere.center)<bosssphere.radius:
-            pos = tuple(self._rand.randIn(self._mapSize - 2 * sphere.radius) + sphere.radius for _ in range(3))
+        if self._players[0].death==False:
+            while self.dis(pos,bosssphere.center)<bosssphere.radius:
+                pos = tuple(self._rand.randIn(self._mapSize - 2 * sphere.radius) + sphere.radius for _ in range(3))
         newSphere = scene.Sphere(pos, sphere.radius)
         self._scene.modify(newSphere, playerId)
         self._players[playerId].nutrientMove=2
