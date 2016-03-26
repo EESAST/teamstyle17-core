@@ -181,6 +181,21 @@ class GameMain:
                   player.ability, pos, sphere.radius, player.longAttackCasting, player.shieldTime, player.dashTime,
                   speedStr, skillList)
 
+    def newMakePlayerJson(self, playerId: int):
+        player = self._players[playerId]
+        skillList = ",".join(
+            '{"name":"%s","level":%d,"cd":%d}' % (skill, player.skillsLV[skill], player.skillsCD[skill]) for skill in
+            player.skillsLV.keys())
+        speedStr = ",".join('%.10f' % x for x in player.speed)
+        sphere = self._scene.getObject(playerId)
+        pos = ",".join('%.10f' % x for x in sphere.center)
+        return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,' \
+               '"ability":%d,"pos":[%s],"r":%d,"longattackcasting":%d,"shieldtime":%d,"dashtime":%d,' \
+               '"speed":[%s],"skills":[%s]}' \
+               % (self._time, playerId, player.aiId, player.health, player.maxHealth, player.vision,
+                  player.ability, pos, sphere.radius, player.longAttackCasting, max(player.shieldLevel-4,player.shieldTime), player.dashTime,
+                  speedStr, skillList)
+
     # 每回合调用一次，依次进行如下动作：
     # 相关辅助函数可自行编写
     def update(self):
@@ -379,7 +394,7 @@ class GameMain:
 
         for playerId in self._players:
             if self._players[playerId].death==False:  # 确保只生成未死亡的玩家的变化信息
-                self._changeList.append(self.makePlayerJson(playerId))
+                self._changeList.append(self.newmakePlayerJson(playerId))
 
         #判断是否为测试赛
         if self._gameType!=0:
@@ -611,8 +626,6 @@ class GameMain:
         if skillLevel == 5:
             # self._players[playerId].shieldTime = 30
             self._players[playerId].shieldLevel = 35
-            if self._players[playerId].shieldTime < 30:
-                self._players[playerId].shieldTime = 30
             self._changeList.append(self.makeSkillCastJson(playerId, 'shield'))
 
     # 护盾，参数为使用者Id
