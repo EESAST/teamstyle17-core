@@ -611,6 +611,9 @@ class GameMain:
         if skillLevel == 5:
             # self._players[playerId].shieldTime = 30
             self._players[playerId].shieldLevel = 35
+            if self._players[playerId].shieldTime < 30:
+                self._players[playerId].shieldTime = 30
+            self._changeList.append(self.makeSkillCastJson(playerId, 'shield'))
 
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
