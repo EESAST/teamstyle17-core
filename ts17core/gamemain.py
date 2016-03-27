@@ -215,6 +215,8 @@ class GameMain:
 
         # 1、结算技能效果
         for playerId in self._rand.shuffle(list(self._castSkills.keys())):
+            if self._gameEnd:
+                break
             if self._players.get(playerId) is None:
                 continue
             if self._players[playerId].death:
@@ -234,6 +236,8 @@ class GameMain:
             elif skillName == 'healthUp':
                 self.healthUp(playerId)
         for playerId, player in self._players.items():
+            if self._gameEnd:
+                break
             if player.death:
                 continue
             # 远程攻击蓄力到时间后结算远程攻击效果
@@ -246,6 +250,8 @@ class GameMain:
 
         # 2、移动所有物体（包括玩家，远程子弹，目标生物）
         for playerId, player in self._players.items():
+            if self._gameEnd:
+                break
             if player.death:
                 continue
             if playerId == 0:
@@ -255,6 +261,8 @@ class GameMain:
 
         # 3、判断相交，结算吃、碰撞、被击中等各种效果
         for playerId in self._rand.shuffle(list(self._players.keys())):
+            if self._gameEnd:
+                break
             player = self._players.get(playerId)
             if player is None:
                 continue
@@ -315,6 +323,8 @@ class GameMain:
         else:
             foodPerTick = 10
         for _ in range(foodPerTick):
+            if self._gameEnd:
+                break
             if self._foodCount > 300:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
@@ -338,6 +348,8 @@ class GameMain:
         if self._time % 100 == 0:
             spikenum += 1
         for _ in range(spikenum):
+            if self._gameEnd:
+                break
             if self._spikeCount >= 10:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
@@ -374,6 +386,8 @@ class GameMain:
         # 所有技能冷却时间 -1, 护盾持续时间 -1， 营养源刷新时间 -1, 瞬移发动后时间 +1
         self._time += 1
         for playerId, player in self._players.items():
+            if self._gameEnd:
+                break
             if player.death:
                 continue
             if player.shieldTime > 0:
@@ -414,6 +428,8 @@ class GameMain:
         player = self._players.get(playerId)
         if player is None:
             raise ValueError('Player %d does not exist' % playerId)
+        if player.death:
+            return
         player.healthChange(delta)
         newHealth = player.health
         if newHealth < player.maxHealth//4:
@@ -502,7 +518,7 @@ class GameMain:
                 objectDict[nutrientId] = makeObjectJson(nutrientId, -2, 'source', pos, 0)
         else:
             visionSpheres = [scene.Sphere(self._scene.getObject(playerId).center, self._players[playerId].vision+self._scene.getObject(playerId).radius)
-                             for playerId in self._players.keys() if self._players[playerId].aiId == aiId]
+                             for playerId in self._players.keys() if self._players[playerId].aiId == aiId and self._players[playerId].death==False]
             visibleLists = [self._scene.intersect(vs, False) for vs in visionSpheres]
             for objectId in [i for ls in visibleLists for i in ls]:
                 if objectDict.get(objectId) is not None:
@@ -604,8 +620,6 @@ class GameMain:
 
     # 近程攻击，参数为使用者Id
     def shortAttack(self, playerId: int):
-        if self._players[playerId].death:
-            return
         skillLevel = self._players[playerId].skillsLV['shortAttack']
         damage = 500 + 200 * (skillLevel - 1)
         if 1<skillLevel<5:
@@ -614,6 +628,8 @@ class GameMain:
         if skillLevel==5:
             attackRange-=100
         self.healthChange(playerId, -50)
+        if self._players[playerId].death:
+            return
         self._players[playerId].skillsCD['shortAttack'] = 80
         self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack'))
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
@@ -645,6 +661,8 @@ class GameMain:
     def inplayer(self,pos:tuple):
         for playerId in self._players:
             if self._players[playerId].aiId==-2:
+                continue
+            if self._players[playerId].death:
                 continue
             sphere=self._scene.getObject(playerId)
             if self.dis(pos,sphere.center)<sphere.radius+100:
