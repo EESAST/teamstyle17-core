@@ -490,7 +490,7 @@ class GameMain:
     def isBelong(self, playerId: int, aiId: int):
         player = self._players.get(playerId)
         if player is None:
-            return
+            return False
         return player.aiId == aiId
 
     # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
@@ -728,7 +728,7 @@ class GameMain:
     def upgradeSkill(self, playerId: int, skillName: str):
         validSkillName = ['shortAttack', 'longAttack', 'shield', 'dash', 'visionUp', 'healthUp']
         if skillName not in validSkillName:
-            return 
+            return
         if self._players[playerId].skillsLV.get(skillName) is not None:
             price = self._skillPrice[skillName] * 2 ** self._players[playerId].skillsLV[skillName]
             if self._players[playerId].ability >= price and self._players[playerId].skillsLV[skillName] < 5:
