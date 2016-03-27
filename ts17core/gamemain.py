@@ -408,7 +408,7 @@ class GameMain:
 
         for playerId in self._players:
             if self._players[playerId].death==False:  # 确保只生成未死亡的玩家的变化信息
-                self._changeList.append(self.newmakePlayerJson(playerId))
+                self._changeList.append(self.newMakePlayerJson(playerId))
 
         #判断是否为测试赛
         if self._gameType!=0:
