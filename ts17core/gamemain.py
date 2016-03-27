@@ -427,7 +427,7 @@ class GameMain:
     def healthChange(self, playerId: int, delta: int):
         player = self._players.get(playerId)
         if player is None:
-            raise ValueError('Player %d does not exist' % playerId)
+            return
         if player.death:
             return
         player.healthChange(delta)
@@ -444,9 +444,9 @@ class GameMain:
     def playerDie(self, playerId: int):
         player = self._players.get(playerId)
         if player is None:
-            raise ValueError('Player %d does not exist' % playerId)
+            return
         if player.health > player.maxHealth//4:
-            raise ValueError('This player is still alive')
+            return
         #self._players.pop(playerId)
         self._players[playerId].death=True
         self._scene.delete(playerId)
@@ -463,7 +463,7 @@ class GameMain:
     def objectDelete(self, objId: int):
         obj = self._objects.get(objId)
         if obj is None:
-            raise ValueError('Object %d does not exist' % objId)
+            return
         self._objects.pop(objId)
         self._scene.delete(objId)
         self._changeList.append(self.makeDeleteJson(objId))
@@ -490,7 +490,7 @@ class GameMain:
     def isBelong(self, playerId: int, aiId: int):
         player = self._players.get(playerId)
         if player is None:
-            raise ValueError('Player %d does not exist' % playerId)
+            return
         return player.aiId == aiId
 
     # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
@@ -683,7 +683,7 @@ class GameMain:
         player = self._players.get(playerId)
         skillLevel = player.skillsLV['dash']
         if player is None:
-            raise ValueError("Player %d does not exist" % playerId)
+            return
         player.dashTime = 40
         if skillLevel==5:
             player.dashTime+=40
@@ -728,7 +728,7 @@ class GameMain:
     def upgradeSkill(self, playerId: int, skillName: str):
         validSkillName = ['shortAttack', 'longAttack', 'shield', 'dash', 'visionUp', 'healthUp']
         if skillName not in validSkillName:
-            raise ValueError('Invalid skill name')
+            return 
         if self._players[playerId].skillsLV.get(skillName) is not None:
             price = self._skillPrice[skillName] * 2 ** self._players[playerId].skillsLV[skillName]
             if self._players[playerId].ability >= price and self._players[playerId].skillsLV[skillName] < 5:
