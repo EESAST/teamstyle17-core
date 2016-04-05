@@ -372,12 +372,12 @@ class GameMain:
             self._changeList.append(self.makeChangeJson(spikeId, -2, center, 0))
 
         if self._nutrientFlushTime == 0:
-            pos = self._rand.randIn(len(self._nutrientFlushPos)/2)*2
+            pos = self._rand.randIn(len(self._nutrientFlushPos)>>1)<<1
             nutrientId1 = int(2000000 + pos)
             nutrientId2 = int(2000000 + pos+1)
             time = 0
             while (self._objects.get(nutrientId1) is not None) and (self._objects.get(nutrientId2) is not None):
-                pos = self._rand.randIn(len(self._nutrientFlushPos)/2)*2
+                pos = self._rand.randIn(len(self._nutrientFlushPos)>>1)<<1
                 nutrientId1 = int(2000000 + pos)
                 nutrientId2 = int(2000000 + pos+1)
                 time += 1
@@ -515,7 +515,7 @@ class GameMain:
     # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
     def getFieldJson(self, aiId: int):
         def makeObjectJson(objId, aiId, objType, pos, r, longAttackCasting=-1,shortAttackCasting=-1,shieldTime=-1):
-            return '{"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longattackcasting":%d"shortattackcasting":%d,,"shieldtime":%d}' \
+            return '{"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longattackcasting":%d,"shortattackcasting":%d,"shieldtime":%d}' \
                    % (objId, aiId, objType, pos[0], pos[1], pos[2], r, longAttackCasting,shortAttackCasting, shieldTime)
 
         objectDict = {}

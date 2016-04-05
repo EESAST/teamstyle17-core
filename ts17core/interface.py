@@ -16,6 +16,7 @@ class Interface:
             raise ValueError('Player %d does not belong to AI %d' % (command["id"], command["ai_id"]))
         if command["action"] == "init":
             self.game = gamemain.GameMain(command["seed"], command["player"],command["type"], self.callback)
+            return
         if command["ai_id"]==0:
             self.last0=instruction
         if command["ai_id"]==1:
