@@ -12,7 +12,7 @@ class PlayerStatus:
         # 速度上限
         self.speedLimit = 100
         # 能力值，购买技能用
-        self.ability = 0
+        self.ability = 10
         # 视野半径
         self.vision = 5000
         # 技能列表，应以“技能名:技能等级”形式保存
@@ -21,6 +21,8 @@ class PlayerStatus:
         self.skillsCD = {}
         # 远程攻击的生效倒计时，倒计到0时生效，-1表示不在倒计时中
         self.longAttackCasting = -1
+        # 近程攻击的生效倒计时，倒计到0时生效，-1表示不在倒计时中
+        self.shortAttackCasting = -1
         # 远程攻击的目标，-1表示没有
         self.longAttackEnemy = -1
         # 冲刺剩余时间，每回合结束后-1
@@ -96,7 +98,7 @@ class GameMain:
         # 随机数生成器，所有随机事件必须从这里获取随机数
         self._rand = myrand.MyRand(seed)
         # 技能基础价格
-        self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 2, 'dash': 1, 'visionUp': 2, 'healthUp': 1}
+        self._skillPrice = {'longAttack': 1, 'shortAttack': 1, 'shield': 1, 'dash': 1, 'visionUp': 2, 'healthUp': 1}
         # 食物编号
         self._foodCount = 0
         self._foodCountAll = 0
@@ -109,10 +111,11 @@ class GameMain:
         self._nutrientFlushPos = []
         for x in range(8):
             temp = x
-            for _ in range(5):
-                self._nutrientFlushPos.append(tuple(
-                    self._rand.randIn(self._mapSize // 2) + ((temp & (1 << y)) >> y) * self._mapSize // 2 for y in
-                    range(3)))
+            for _ in range(3):
+                pos1=tuple(self._rand.randIn(self._mapSize // 2) + ((temp & (1 << y)) >> y) * self._mapSize // 2 for y in range(3))
+                pos2=tuple(self._mapSize-y for y in pos1)
+                self._nutrientFlushPos.append(pos1)
+                self._nutrientFlushPos.append(pos2)
 
         # 记录变化情况的json的list，每项为一个json object
         self._changeList = []
@@ -175,10 +178,10 @@ class GameMain:
         sphere = self._scene.getObject(playerId)
         pos = ",".join('%.10f' % x for x in sphere.center)
         return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,' \
-               '"ability":%d,"pos":[%s],"r":%d,"longattackcasting":%d,"shieldtime":%d,"dashtime":%d,' \
+               '"ability":%d,"pos":[%s],"r":%d,"longattackcasting":%d,"shortattackcasting":%d,"shieldtime":%d,"dashtime":%d,' \
                '"speed":[%s],"skills":[%s]}' \
                % (self._time, playerId, player.aiId, player.health, player.maxHealth, player.vision,
-                  player.ability, pos, sphere.radius, player.longAttackCasting, player.shieldTime, player.dashTime,
+                  player.ability, pos, sphere.radius, player.longAttackCasting,player.shortAttackCasting, player.shieldTime, player.dashTime,
                   speedStr, skillList)
 
     def newMakePlayerJson(self, playerId: int):
@@ -190,10 +193,10 @@ class GameMain:
         sphere = self._scene.getObject(playerId)
         pos = ",".join('%.10f' % x for x in sphere.center)
         return '{"info":"player","time":%d,"id":%d,"ai_id":%d,"health":%d,"max_health":%d,"vision":%d,' \
-               '"ability":%d,"pos":[%s],"r":%d,"longattackcasting":%d,"shieldtime":%d,"dashtime":%d,' \
+               '"ability":%d,"pos":[%s],"r":%d,"longattackcasting":%d,"shortattackcasting":%d,"shieldtime":%d,"dashtime":%d,' \
                '"speed":[%s],"skills":[%s]}' \
                % (self._time, playerId, player.aiId, player.health, player.maxHealth, player.vision,
-                  player.ability, pos, sphere.radius, player.longAttackCasting, max(player.shieldLevel-4,player.shieldTime), player.dashTime,
+                  player.ability, pos, sphere.radius, player.longAttackCasting,player.shortAttackCasting, max(player.shieldLevel-4,player.shieldTime), player.dashTime,
                   speedStr, skillList)
 
     # 每回合调用一次，依次进行如下动作：
@@ -224,7 +227,7 @@ class GameMain:
             skillInfo = self._castSkills[playerId]
             skillName = skillInfo.name
             if skillName == 'shortAttack':
-                self.shortAttack(playerId)
+                self.shortAttackSet(playerId)
             elif skillName == 'longAttack':
                 self.longAttackSet(playerId, skillInfo.player)
             elif skillName == 'dash':
@@ -243,6 +246,9 @@ class GameMain:
             # 远程攻击蓄力到时间后结算远程攻击效果
             if player.longAttackCasting == 0:
                 self.longAttackDone(playerId)
+            # 近程攻击蓄力到时间后结算远程攻击效果
+            if player.shortAttackCasting == 0:
+                self.shortAttackDone(playerId)
             # 冲刺状态时间到后恢复原始速度
             if player.dashTime == 0:
                 player.speedLimit = 100
@@ -255,7 +261,7 @@ class GameMain:
             if player.death:
                 continue
             if playerId == 0:
-                player.speed = tuple((self._rand.randIn(20 * 1000000) / 1000000)-10 for _ in range(3))
+                player.speed = tuple((self._rand.randIn(20 * 1000000) / 1000000)-10+self._players[1].speed[x]/2+self._players[2].speed[x]/2 for x in range(3))
             if player.stopTime == 0:
                 self.playerMove(playerId)
 
@@ -313,6 +319,8 @@ class GameMain:
                                     self._players[playerId].skillsLV["shield"] < 5) and self._players[
                                 playerId].shieldLevel < 5:
                         damage = self._players[playerId].health // 3
+                        if damage>2000:
+                            damage=2000
                         self.healthChange(playerId, -damage)
                         self.objectDelete(touchedId)
 
@@ -350,7 +358,7 @@ class GameMain:
         for _ in range(spikenum):
             if self._gameEnd:
                 break
-            if self._spikeCount >= 10:
+            if self._spikeCount >= 50:
                 break
             center = tuple(self._rand.randIn(self._mapSize) for _ in range(3))
             while self.inplayer(center):
@@ -364,19 +372,26 @@ class GameMain:
             self._changeList.append(self.makeChangeJson(spikeId, -2, center, 0))
 
         if self._nutrientFlushTime == 0:
-            pos = self._rand.randIn(len(self._nutrientFlushPos))
-            nutrientId = int(2000000 + pos)
+            pos = self._rand.randIn(len(self._nutrientFlushPos)/2)*2
+            nutrientId1 = int(2000000 + pos)
+            nutrientId2 = int(2000000 + pos+1)
             time = 0
-            while self._objects.get(nutrientId) is not None:
-                pos = self._rand.randIn(len(self._nutrientFlushPos))
-                nutrientId = int(2000000 + pos)
+            while (self._objects.get(nutrientId1) is not None) and (self._objects.get(nutrientId2) is not None):
+                pos = self._rand.randIn(len(self._nutrientFlushPos)/2)*2
+                nutrientId1 = int(2000000 + pos)
+                nutrientId2 = int(2000000 + pos+1)
                 time += 1
                 if time > 10:
                     break
             if time <= 10:
-                nutrient = scene.Sphere(self._nutrientFlushPos[pos])
-                self._objects[nutrientId] = ObjectStatus("nutrient")
-                self._scene.insert(nutrient, nutrientId)
+                if self._objects.get(nutrientId1) is  None:
+                    nutrient = scene.Sphere(self._nutrientFlushPos[pos])
+                    self._objects[nutrientId1] = ObjectStatus("nutrient")
+                    self._scene.insert(nutrient, nutrientId1)
+                if self._objects.get(nutrientId2) is  None:
+                    nutrient = scene.Sphere(self._nutrientFlushPos[pos+1])
+                    self._objects[nutrientId2] = ObjectStatus("nutrient")
+                    self._scene.insert(nutrient, nutrientId2)
                 self._nutrientFlushTime = self._rand.randIn(100) + 10
         else:
             self._nutrientFlushTime -= 1
@@ -392,12 +407,16 @@ class GameMain:
                 continue
             if player.shieldTime > 0:
                 player.shieldTime -= 1
+                if player.skillsLV['shield']>3 and player.skillsLV['healthUp']==5:
+                    self.healthChange(playerId, 5*player.skillsLV['shield']-5)
             if player.shieldLevel > 0:
                 player.shieldLevel -= 1
             if player.stopTime > 0:
                 player.stopTime -= 1
             if player.longAttackCasting > 0:
                 player.longAttackCasting -= 1
+            if player.shortAttackCasting > 0:
+                player.shortAttackCasting -= 1
             if player.dashTime > 0:
                 player.dashTime -= 1
             if player.nutrientMove>0:
@@ -495,9 +514,9 @@ class GameMain:
 
     # 若aiId为-1则返回所有物体，否则返回该AI控制的所有玩家的视野内物体的并集
     def getFieldJson(self, aiId: int):
-        def makeObjectJson(objId, aiId, objType, pos, r, longAttackCasting=-1, shieldTime=-1):
-            return '{"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longattackcasting":%d,"shieldtime":%d}' \
-                   % (objId, aiId, objType, pos[0], pos[1], pos[2], r, longAttackCasting, shieldTime)
+        def makeObjectJson(objId, aiId, objType, pos, r, longAttackCasting=-1,shortAttackCasting=-1,shieldTime=-1):
+            return '{"id":%d,"ai_id":%d,"type":"%s","pos":[%.10f,%.10f,%.10f],"r":%.10f,"longattackcasting":%d"shortattackcasting":%d,,"shieldtime":%d}' \
+                   % (objId, aiId, objType, pos[0], pos[1], pos[2], r, longAttackCasting,shortAttackCasting, shieldTime)
 
         objectDict = {}
         if aiId == -1:
@@ -507,7 +526,7 @@ class GameMain:
                 sphere = self._scene.getObject(playerId)
                 objectDict[playerId] = \
                     makeObjectJson(playerId, self._players[playerId].aiId, "player", sphere.center, sphere.radius,
-                                   self._players[playerId].longAttackCasting, self._players[playerId].shieldTime)
+                                   self._players[playerId].longAttackCasting, self._players[playerId].shortAttackCasting,self._players[playerId].shieldTime)
             for objectId in self._objects:
                 status = self._objects[objectId]
                 sphere = self._scene._objs[objectId]
@@ -527,7 +546,7 @@ class GameMain:
                 if self._players.get(objectId) is not None:
                     objectDict[objectId] = \
                         makeObjectJson(objectId, self._players[objectId].aiId, 'player', sphere.center, sphere.radius,
-                                       self._players[objectId].longAttackCasting, self._players[objectId].shieldTime)
+                                       self._players[objectId].longAttackCasting, self._players[objectId].shortAttackCasting,self._players[objectId].shieldTime)
                 else:
                     objType = self._objects.get(objectId).type
                     objectDict[objectId] = makeObjectJson(objectId, -2, objType, sphere.center, sphere.radius)
@@ -564,6 +583,8 @@ class GameMain:
     def castSkill(self, playerId: int, skillName: str, **kw):
         if self._players[playerId].longAttackCasting >= 0:
             return
+        if self._players[playerId].shortAttackCasting >= 0:
+            return
         if self._players[playerId].skillsLV.get(skillName) is not None:
             if self._players[playerId].skillsCD[skillName] == 0:
                 if skillName == 'longAttack':
@@ -586,10 +607,23 @@ class GameMain:
         player.longAttackEnemy = enemyId
         self._changeList.append(self.makeSkillCastJson(playerId, 'longAttack', enemyId))
 
+    def shortAttackSet(self, playerId: int):
+        player = self._players.get(playerId)
+        if player is None:
+            return
+        if player.death :
+            return
+        self.healthChange(playerId, -50)
+        player.skillsCD['shortAttack'] = 80
+        player.shortAttackCasting = 10
+        self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack'))
+
     # 远程攻击蓄力完成
     def longAttackDone(self, playerId: int):
         player = self._players.get(playerId)
         enemyId = player.longAttackEnemy
+        if player is None:
+            return
         if self._players[enemyId].death:
             player.longAttackCasting = -1
             player.longAttackEnemy = -1
@@ -599,19 +633,20 @@ class GameMain:
             player.longAttackEnemy = -1
             return
         enemyObj = self._scene.getObject(enemyId)
-        if player is None:
-            return
         if player.longAttackCasting != 0:
             return
         skillLevel = player.skillsLV['longAttack']
         attackRange = 2000 + 500 * skillLevel
-        if self._players[enemyId].shieldTime > 0 or self._players[enemyId].shieldLevel >= 5:
-            player.longAttackCasting = -1
-            player.longAttackEnemy = -1
-            return
         if self.dis(self._scene.getObject(playerId).center, enemyObj.center) - enemyObj.radius-self._scene.getObject(playerId).radius < attackRange:
-            damage = 100 * skillLevel
-            self.healthChange(enemyId, -damage)
+            newdamage = 100 * skillLevel
+            if player.dashTime!=0:
+                newdamage*=(1+(player.skillsLV["dash"]+2)*0.1+0.05)
+            if self._players[enemyId].shieldLevel>=5:
+                newdamage*=0.7
+            elif self._players[enemyId].shieldTime!=0:
+                newdamage*=(self._players[enemyId].skillsLV['shield']+2)
+                newdamage/=10
+            self.healthChange(enemyId, -newdamage)
             if skillLevel == 5:
                 self._players[enemyId].stopTime = 30
             self._changeList.append(self.makeSkillHitJson('longAttack', playerId,enemyId))
@@ -619,7 +654,15 @@ class GameMain:
         player.longAttackEnemy = -1
 
     # 近程攻击，参数为使用者Id
-    def shortAttack(self, playerId: int):
+    def shortAttackDone(self, playerId: int):
+        player = self._players.get(playerId)
+        if player is None:
+            return
+        if player.death:
+            player.shortAttackCasting = -1
+            return
+        if player.shortAttackCasting != 0:
+            return
         skillLevel = self._players[playerId].skillsLV['shortAttack']
         damage = 500 + 200 * (skillLevel - 1)
         if 1<skillLevel<5:
@@ -627,22 +670,25 @@ class GameMain:
         attackRange = 1100 + 300 * skillLevel
         if skillLevel==5:
             attackRange-=100
-        self.healthChange(playerId, -50)
-        if self._players[playerId].death:
-            return
-        self._players[playerId].skillsCD['shortAttack'] = 80
-        self._changeList.append(self.makeSkillCastJson(playerId, 'shortAttack'))
         # 创建虚拟球体，找到所有受到影响的物体。受到影响的判定为：相交
         virtualSphere = scene.Sphere(self.getCenter(playerId), attackRange+self._scene.getObject(playerId).radius)
         for objId in self._scene.intersect(virtualSphere):
-            if self._players.get(objId) is not None and objId != playerId and ((self._players[objId].shieldTime == 0 \
-                    and self._players[objId].shieldLevel < 5)or(skillLevel>=3)):
-                self.healthChange(objId, -damage)
+            if self._players.get(objId) is not None and objId != playerId :
+                newdamage=damage
+                if player.dashTime!=0:
+                    newdamage*=(1+(player.skillsLV["dash"]+2)*0.1+0.05)
+                if self._players[objId].shieldLevel>=5:
+                    newdamage*=0.7
+                elif self._players[objId].shieldTime!=0:
+                    newdamage*=(self._players[objId].skillsLV['shield']+2)
+                    newdamage/=10
+                self.healthChange(objId, -newdamage)
                 self._changeList.append(self.makeSkillHitJson('shortAttack', playerId,objId))
         if skillLevel == 5:
             # self._players[playerId].shieldTime = 30
             self._players[playerId].shieldLevel = 35
             self._changeList.append(self.makeSkillCastJson(playerId, 'shield'))
+        player.shortAttackCasting = -1
 
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
