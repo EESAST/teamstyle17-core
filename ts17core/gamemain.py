@@ -299,7 +299,7 @@ class GameMain:
                     self._foodCount -= 1
                 elif objType == "nutrient":
                     self._changeList.append(self.makeDeleteJson(eatenId))
-                    player.ability += self._rand.rand() % 3 + 3
+                    player.ability += 5
                     self.nutrientMove(playerId)
                     self.objectDelete(eatenId)
             if playerId==0 :
