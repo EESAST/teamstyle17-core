@@ -353,7 +353,7 @@ class GameMain:
 
 
         spikenum=0
-        if self._time % 100 == 0:
+        if self._time % 10 == 0:
             spikenum += 1
         for _ in range(spikenum):
             if self._gameEnd:
