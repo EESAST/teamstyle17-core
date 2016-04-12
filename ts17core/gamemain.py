@@ -693,11 +693,8 @@ class GameMain:
     # 护盾，参数为使用者Id
     def shield(self, playerId: int):
         skillLevel = self._players[playerId].skillsLV['shield']
-        if skillLevel<3:
-            self._players[playerId].shieldTime = 20+10*skillLevel
-        else:
-            self._players[playerId].shieldTime = 50
-        self._players[playerId].skillsCD['shield'] = 100
+        self._players[playerId].shieldTime = 30
+        self._players[playerId].skillsCD['shield'] = 80
         self._changeList.append(self.makeSkillCastJson(playerId, 'shield'))
 
     # 计算两点pos1, pos2距离
@@ -734,7 +731,6 @@ class GameMain:
         if skillLevel==5:
             player.dashTime+=40
         player.speedLimit += skillLevel * 20
-        self.healthChange(playerId, -40)
         player.skillsCD['dash'] = 100
         self._changeList.append(self.makeSkillCastJson(playerId, 'dash'))
 
