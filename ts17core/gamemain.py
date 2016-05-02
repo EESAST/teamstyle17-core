@@ -408,7 +408,7 @@ class GameMain:
                 continue
             if player.shieldTime > 0:
                 player.shieldTime -= 1
-                if player.skillsLV['shield']>3 and player.skillsLV['healthUp']==5:
+                if player.skillsLV['shield']>2 and player.skillsLV['healthUp']==5:
                     self.healthChange(playerId, 5*player.skillsLV['shield']-5)
             if player.shieldLevel > 0:
                 player.shieldLevel -= 1
