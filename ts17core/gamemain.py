@@ -37,6 +37,7 @@ class PlayerStatus:
         self.maxHealth = self.health
         #因营养源传送获得的一回合不受刺球影响状态
         self.nutrientMove=0
+        self.tnutrientMove=0
         #是否死亡
         self.death=False
 
@@ -312,7 +313,7 @@ class GameMain:
                     continue
                 objType = self._objects[touchedId].type
                 if objType == "spike":
-                    if self._players[playerId].nutrientMove>0:
+                    if self._players[playerId].tnutrientMove>0:
                         self.objectDelete(touchedId)
                         continue
                     if (self._players[playerId].shieldTime == 0 or
@@ -421,6 +422,8 @@ class GameMain:
                 player.dashTime -= 1
             if player.nutrientMove>0:
                 player.nutrientMove-=1
+            if player.tnutrientMove>0:
+                player.tnutrientMove-=1
             for skillName in self._players[playerId].skillsCD.keys():
                 if player.skillsCD[skillName] > 0:
                     player.skillsCD[skillName] -= 1
@@ -708,7 +711,7 @@ class GameMain:
             if self._players[playerId].death:
                 continue
             sphere=self._scene.getObject(playerId)
-            if self.dis(pos,sphere.center)<sphere.radius+100:
+            if self.dis(pos,sphere.center)<sphere.radius+500:
                 return True
         return False
 
@@ -747,6 +750,7 @@ class GameMain:
         newSphere = scene.Sphere(pos, sphere.radius)
         self._scene.modify(newSphere, playerId)
         self._players[playerId].nutrientMove=2
+        self._players[playerId].tnutrientMove=6
         self._changeList.append(self.makeChangeJson(playerId, self._players[playerId].aiId, pos, newSphere.radius,1))
 
     # 提升视野，参数为使用者Id
