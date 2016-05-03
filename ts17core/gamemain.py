@@ -106,6 +106,8 @@ class GameMain:
         # 刺球编号
         self._spikeCount = 0
         self._spikeCountAll = 0
+        #伤害总量
+        self._damage=0;
         # 营养源刷新剩余时间
         self._nutrientFlushTime = 0
         # 营养源刷新位置
@@ -453,6 +455,8 @@ class GameMain:
         if player.death:
             return
         player.healthChange(delta)
+        if delta<0:
+            self._damage-=delta
         newHealth = player.health
         if newHealth < player.maxHealth//4:
             self.playerDie(playerId)
@@ -803,7 +807,7 @@ class GameMain:
         if self._gameType!=0:
             return
         self._gameEnd = True
-        self._changeList.append('{"info":"end","time":%d,"ai_id":%d,"why":%d}' % (self._time, winnerId,why))
+        self._changeList.append('{"info":"end","time":%d,"ai_id":%d,"why":%d,"damage":%d,"maxhealth":%d}' % (self._time, winnerId,why,self._damage,max(self._players[1].health,self._players[2].health)))
 
     def testGameEnd(self,score:int):
         self._gameEnd=True
